@@ -5,8 +5,10 @@
 #   \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
+# 2014-02-20 blueCAPE Lda: Modifications for blueCFD-Core 2.3
+#------------------------------------------------------------------------------
 # License
-#     This file is part of OpenFOAM.
+#     This file is a derivative work of OpenFOAM.
 #
 #     OpenFOAM is free software: you can redistribute it and/or modify it
 #     under the terms of the GNU General Public License as published by
@@ -20,6 +22,16 @@
 #
 #     You should have received a copy of the GNU General Public License
 #     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Modifications
+#     This file has been modified by blueCAPE's unofficial mingw patches for
+#     OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     Modifications made:
+#        - Derived from the patches for blueCFD 2.1 and 2.2.
+#        - Added capability to do partial downloads and later continuing them.
 #
 # File
 #     etc/tools/ThirdPartyFunctions
@@ -41,7 +53,12 @@ installBASE=$WM_THIRD_PARTY_DIR/platforms/$WM_ARCH$WM_COMPILER
 # - restrict WM_NCOMPPROCS to local number of cores
 #
 unset WM_HOSTS WM_SCHEDULER
-export WM_NCOMPPROCS=$(egrep "^processor" /proc/cpuinfo 2>/dev/null | wc -l)
+
+export WM_NCOMPPROCS=${NUMBER_OF_PROCESSORS:-1}
+if [ -r /proc/cpuinfo ]; then
+  export WM_NCOMPPROCS=$(egrep "^processor" /proc/cpuinfo | wc -l);
+fi
+
 if [ $WM_NCOMPPROCS -le 1 ]
 then
     WM_NCOMPPROCS=1
@@ -65,11 +82,17 @@ downloadFile()
     file="$1"
     url="$2"
 
-    if [ ! -e download/$file ]
+    if [ ! -e download/$file -a ! -e download/${file}.partial ]
     then
         mkdir -p download
         echo "downloading $tarFile from $url"
-        ( cd download && wget --no-check-certificate $url -O $file )
+        ( cd download && wget --no-check-certificate $url -O ${file}.partial && \
+          mv ${file}.partial ${file} )
+    elif [ -e download/${file}.partial ]
+    then
+        echo "Verifying/continuing download of $tarFile from $url ..."
+        ( cd download && wget -c --no-check-certificate $url -O ${file}.partial && \
+          mv ${file}.partial ${file} )
     fi
 }
 
