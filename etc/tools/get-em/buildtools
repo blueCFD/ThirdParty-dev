@@ -1,0 +1,86 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2014 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/tools/get-em/buildtools
+#
+# Description
+#     This script will provide the list of applications related to this profile.
+#     This script expects to be executed in the base folder where the get-em script is.
+#
+#------------------------------------------------------------------------------
+
+#redundance for default version translation
+BUILDTOOLS_VERSION=default
+
+versionVar="BUILDTOOLS_VERSION"
+appName="buildtools"
+appDefaultSep="" #none needed
+appFileExt="" #none needed
+
+
+#
+# Shows the description for this application.
+#
+GE_showDesc()
+{
+  echo "buildtools - Retrieve all of the basic tools for compiling and building: gcc, gmp, mpfr, mpc."
+}
+
+
+#
+# Updates the file defined in $versionCacheFile, using the mirror url $1 and
+# uses the $testFile as a sandbox.
+#
+GE_update()
+{
+  echo $appName=default > $versionCacheFile
+  echo $appName=latest >> $versionCacheFile
+}
+
+
+#
+# Unroll the version $1, in case it's a combo package.
+#
+GE_unroll()
+{
+  case $1 in
+  default)
+    echo gcc=default
+    echo gmp=default
+    echo mpfr=default
+    [ -n "$(. $defaultsFile ; eval echo $mpc_version | sed 's/mpc-//')" ] && \
+      echo mpc=default
+    break
+    ;;
+  latest)
+    echo gcc=latest
+    echo gmp=latest
+    echo mpfr=latest
+    echo mpc=latest
+    break
+    ;;
+  esac
+}
+
+
+# Finally source the master script
+. etc/tools/get-emScriptFunctions
