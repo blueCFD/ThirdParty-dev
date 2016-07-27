@@ -3,7 +3,7 @@
 # =========                 |
 # \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
 #  \\    /   O peration     |
-#   \\  /    A nd           | Copyright (C) 2011-2014 OpenFOAM Foundation
+#   \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
 # 2014-02-20 blueCAPE Lda: Modifications for blueCFD-Core 2.3
@@ -103,7 +103,7 @@ OPENMPI)
         set -x
         cd "${MPI_ARCH_PATH##*/}" || exit 1    # change to openmpi-VERSION
 
-        make distclean 2>/dev/null
+        [ -e Makefile ] && make distclean 2>/dev/null
         rm -rf $MPI_ARCH_PATH
 
         # start with GridEngine support,
@@ -148,7 +148,7 @@ MPICH)
         set -x
         cd $MPI_HOME || exit 1    # change to mpich-VERSION
 
-        make distclean 2>/dev/null
+        [ -e Makefile ] && make distclean 2>/dev/null
         rm -rf $MPI_ARCH_PATH
         rm util/machines/machines.*
 
@@ -201,12 +201,12 @@ fi # MPI MinGW or Linux
 
 
 # get SCOTCH_VERSION, SCOTCH_ARCH_PATH
-if settings=`$WM_PROJECT_DIR/bin/foamEtcFile config/scotch.sh`
+if settings=`$WM_PROJECT_DIR/bin/foamEtcFile config.sh/scotch`
 then
     . $settings
 else
     echo
-    echo "Error: no config/scotch.sh settings"
+    echo "Error: no config.sh/scotch settings"
     echo
 fi
 
@@ -343,14 +343,14 @@ fi
 
 fi #end if isMinGW
 
-# -----------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 # Metis is optional
 echo ========================================
 echo Build Metis decomposition
 
 # get METIS_VERSION, METIS_ARCH_PATH
-if settings=`$WM_PROJECT_DIR/bin/foamEtcFile config/metis.sh`
+if settings=`$WM_PROJECT_DIR/bin/foamEtcFile config.sh/metis`
 then
     . $settings
 fi
@@ -411,6 +411,24 @@ then
     (
         set -x
         cd $METIS_VERSION  || exit 1
+
+        if [ "$WM_PRECISION_OPTION" = "DP" ]
+        then
+            FLOAT_PRECISION=64
+        elif [ "$WM_PRECISION_OPTION" = "SP" ]
+        then
+            FLOAT_PRECISION=32
+        else
+            echo " Metis pre-configure error:"
+            echo "    WM_PRECISION_OPTION is neither DP nor SP"
+            exit 1
+        fi
+
+        # Change user settings automatically
+        sed -i -e 's=\(#define IDXTYPEWIDTH\).*=\1 '$WM_LABEL_SIZE'=' \
+               -e 's=\(#define REALTYPEWIDTH\).*=\1 '$FLOAT_PRECISION'=' \
+            include/metis.h
+
         make config shared=1 prefix=$METIS_ARCH_PATH
         make -j $WM_NCOMPPROCS install
         cp $METIS_ARCH_PATH/lib/libmetis.so $FOAM_EXT_LIBBIN
@@ -472,4 +490,4 @@ echo ========================================
 echo
 
 
-# ----------------------------------------------------------------- end-of-file
+#------------------------------------------------------------------------------

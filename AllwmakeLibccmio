@@ -3,7 +3,7 @@
 # =========                 |
 # \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
 #  \\    /   O peration     |
-#   \\  /    A nd           | Copyright (C) 2011 OpenFOAM Foundation
+#   \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
 # 2014-02-20 blueCAPE Lda: Modifications for blueCFD-Core 2.3
@@ -39,7 +39,7 @@
 #     AllwmakeLibccmio
 #
 # Description
-#     Get and build CD-adapco's ccmio library
+#     Build CD-adapco's ccmio library
 #
 #------------------------------------------------------------------------------
 packageDir=libccmio-2.6.1
@@ -100,4 +100,4 @@ set -x
 )
 
 
-# ----------------------------------------------------------------- end-of-file
+#------------------------------------------------------------------------------

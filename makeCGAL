@@ -3,7 +3,7 @@
 # =========                 |
 # \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
 #  \\    /   O peration     |
-#   \\  /    A nd           | Copyright (C) 2012-2014 OpenFOAM Foundation
+#   \\  /    A nd           | Copyright (C) 2012-2016 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
 # License
@@ -37,15 +37,22 @@
 #     Mixing system and ThirdParty for gmp/mpfr is not supported.
 #
 #------------------------------------------------------------------------------
+
+# Get CGAL, boost and gmp/mpfr versions
+. $WM_PROJECT_DIR/etc/config.sh/functions
+_foamEval SOURCE_CGAL_VERSIONS_ONLY=yes \
+          $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/CGAL)
+_foamSource $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/compiler)
+
 set -x
 
-cgalPACKAGE=CGAL-4.7
-boostPACKAGE=boost-system
-gmpPACKAGE=gmp-system
-mpfrPACKAGE=mpfr-system
+cgalPACKAGE=${cgal_version:-CGAL-4.8}
+boostPACKAGE=${boost_version:-boost-system}
+gmpPACKAGE=${gmp_version:-gmp-system}
+mpfrPACKAGE=${mpfr_version:-mpfr-system}
 
 #------------------------------------------------------------------------------
-# run from third-party directory only
+# Run from third-party directory only
 wmakeCheckPwd "$WM_THIRD_PARTY_DIR" || {
     echo "Error: Current directory is not \$WM_THIRD_PARTY_DIR"
     echo "    The environment variables are inconsistent with the installation."
@@ -83,11 +90,11 @@ USAGE
 }
 
 
-# ensure CMake gets the correct C++ compiler
+# Ensure CMake gets the correct C++ compiler
 [ -n "$WM_CXX" ] && export CXX="$WM_CXX"
 
 
-# parse options
+# Parse options
 while [ "$#" -gt 0 ]
 do
     case "$1" in
@@ -159,7 +166,7 @@ then
 else
     boostInc="/usr/include"
 
-    # for completeness:
+    # For completeness:
     # 64-bit needs lib64, but 32-bit needs lib (not lib32)
     if [ "$WM_ARCH_OPTION" = 64 ]
     then
@@ -170,7 +177,7 @@ else
 fi
 
 
-# retrieve boost version:
+# Retrieve boost version:
 if [ -f "$boostInc/boost/version.hpp" ]
 then
     BOOST_VERSION_NO=`sed -ne 's/^#define *BOOST_VERSION *\([0-9][0-9]*\).*$/\1/p' $boostInc/boost/version.hpp`
@@ -180,6 +187,11 @@ else
     exit 1
 fi
 
+if [ "$cgal_version" = "cgal-system" ]
+then
+    echo "Using system installation of CGAL"
+    exit 0
+fi
 
 #
 # Build CGAL
@@ -201,7 +213,7 @@ GMP_ARCH_PATH=$installBASE/$gmpPACKAGE
 MPFR_ARCH_PATH=$installBASE/$mpfrPACKAGE
 
 (
-    # remove any existing build folder and recreate
+    # Remove any existing build folder and recreate
     if [ -d $CGAL_BINARY_DIR ]
     then
         echo "removing old build directory"
@@ -246,13 +258,13 @@ CMAKE_OPTIONS
         echo "    ThirdParty     : gmp/mpfr"
         configGmpMpfr=$(cat <<CMAKE_OPTIONS
  -DGMP_INCLUDE_DIR=$GMP_ARCH_PATH/include
- -DGMP_LIBRARIES_DIR=$GMP_ARCH_PATH/lib
- -DGMP_LIBRARIES=$GMP_ARCH_PATH/lib/libgmp.so
+ -DGMP_LIBRARIES_DIR=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH
+ -DGMP_LIBRARIES=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH/libgmp.so
  -DGMPXX_INCLUDE_DIR=$GMP_ARCH_PATH/include
- -DGMPXX_LIBRARIES=$GMP_ARCH_PATH/lib/libgmpxx.so
+ -DGMPXX_LIBRARIES=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH/libgmpxx.so
  -DMPFR_INCLUDE_DIR=$MPFR_ARCH_PATH/include
- -DMPFR_LIBRARIES_DIR=$MPFR_ARCH_PATH/lib
- -DMPFR_LIBRARIES=$MPFR_ARCH_PATH/lib/libmpfr.so
+ -DMPFR_LIBRARIES_DIR=$MPFR_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH
+ -DMPFR_LIBRARIES=$MPFR_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH/libmpfr.so
 CMAKE_OPTIONS
 )
     else
@@ -264,6 +276,7 @@ CMAKE_OPTIONS
     cmake \
         -DCMAKE_INSTALL_PREFIX=$CGAL_ARCH_PATH \
         -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_CGAL_Qt5=OFF \
         $configBoost $configGmpMpfr \
         $CGAL_SOURCE_DIR \
     && make -j $WM_NCOMPPROCS \
@@ -287,4 +300,4 @@ CMAKE_OPTIONS
     echo "Done CGAL"
 )
 
-# ----------------------------------------------------------------- end-of-file
+#------------------------------------------------------------------------------

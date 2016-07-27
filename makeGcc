@@ -3,7 +3,7 @@
 # =========                 |
 # \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
 #  \\    /   O peration     |
-#   \\  /    A nd           | Copyright (C) 2011-2015 OpenFOAM Foundation
+#   \\  /    A nd           | Copyright (C) 2011-2016 OpenFOAM Foundation
 #    \\/     M anipulation  |
 #------------------------------------------------------------------------------
 # License
@@ -29,10 +29,16 @@
 #     Build script for gmp, mpfr and gcc-[4-9].?.?
 #
 #------------------------------------------------------------------------------
-gmpPACKAGE=gmp-5.1.2
-mpfrPACKAGE=mpfr-3.1.2
-mpcPACKAGE=mpc-1.0.1
-gccPACKAGE=
+
+# get default GCC, mpfr, gmp and mpc versions
+. $WM_PROJECT_DIR/etc/config.sh/functions
+_foamSource $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/compiler)
+
+gmpPACKAGE=${gmp_version:-gmp-5.1.2}
+mpfrPACKAGE=${mpfr_version:-mpfr-3.1.2}
+mpcPACKAGE=${mpc_version:-mpc-1.0.1}
+gccPACKAGE=$gcc_version
+
 
 #------------------------------------------------------------------------------
 # Run from third-party directory only
@@ -50,7 +56,10 @@ usage() {
     while [ "$#" -ge 1 ]; do echo "$1"; shift; done
     cat<<USAGE
 
-usage: ${0##*/} [gmp-VERSION] [mpfr-VERSION] [mpc-VERSION] <gcc-VERSION>
+usage: ${0##*/} [option] [gmp-VERSION] [mpfr-VERSION] [mpc-VERSION] <gcc-VERSION>
+options:
+  -no-multilib      for 64-bit systems that don't have 32-bit support
+  -help
 
 * build combinations of gmp, mpfr, mpc and gcc
       $gmpPACKAGE
@@ -62,6 +71,7 @@ USAGE
     exit 1
 }
 
+GCC_BUILD_OPTIONS=""
 
 # Parse options
 while [ "$#" -gt 0 ]
@@ -69,6 +79,10 @@ do
     case "$1" in
     -h | -help)
         usage
+        ;;
+    -no-multilib)
+        GCC_BUILD_OPTIONS="--disable-multilib"
+        shift
         ;;
     gmp-[4-9]*)
         gmpPACKAGE="${1%%/}"
@@ -120,13 +134,6 @@ GMP_ARCH_PATH=$installBASE/$gmpPACKAGE
 MPFR_ARCH_PATH=$installBASE/$mpfrPACKAGE
 MPC_ARCH_PATH=$installBASE/$mpcPACKAGE
 
-# mpc is not needed for gcc older than 4.5
-case "$gccPACKAGE" in
-gcc-4.[0-4].*)
-   mpcPACKAGE=false
-   ;;
-esac
-
 #
 # Build GMP
 #
@@ -151,6 +158,7 @@ else
     set -x
     $sourceDIR/configure ABI=$ABI \
         --prefix=$GMP_ARCH_PATH \
+        --libdir=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
         --enable-cxx \
     && make -j $WM_NCOMPPROCS \
     && make install \
@@ -187,7 +195,9 @@ else
     set -x
     $sourceDIR/configure ABI=$ABI \
        --prefix=$MPFR_ARCH_PATH \
-       --with-gmp=$GMP_ARCH_PATH \
+       --libdir=$MPFR_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
+       --with-gmp-include=$GMP_ARCH_PATH/include \
+       --with-gmp-lib=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
     && make -j $WM_NCOMPPROCS \
     && make install \
     && echo "Built: $mpfrPACKAGE"
@@ -206,9 +216,6 @@ echo "---------------"
 if [ -d $MPC_ARCH_PATH ]
 then
     echo "Already built: $mpcPACKAGE"
-elif [ "$mpcPACKAGE" = false ]
-then
-    echo "Skip building mpc - not needed for older gcc versions"
 else
     echo "Starting build: $mpcPACKAGE"
     echo
@@ -226,8 +233,11 @@ else
     set -x
     $sourceDIR/configure ABI=$ABI \
         --prefix=$MPC_ARCH_PATH \
-        --with-gmp=$GMP_ARCH_PATH \
-        --with-mpfr=$MPFR_ARCH_PATH \
+        --libdir=$MPC_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
+        --with-gmp-include=$GMP_ARCH_PATH/include \
+        --with-gmp-lib=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
+        --with-mpfr-include=$MPFR_ARCH_PATH/include \
+        --with-mpfr-lib=$MPFR_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
     && make -j $WM_NCOMPPROCS \
     && make install \
     && echo "Built: $mpcPACKAGE"
@@ -263,9 +273,6 @@ else
     cd $sourceDIR || exit 1
     make distclean 2>/dev/null
 
-    unset withMpc
-    [ -d "$MPC_ARCH_PATH" ] && withMpc="--with-mpc=$MPC_ARCH_PATH"
-
     rm -rf $buildDIR
     mkdir -p $buildDIR
     cd $buildDIR
@@ -273,14 +280,18 @@ else
     set -x
     $sourceDIR/configure \
         --prefix=$GCC_ARCH_PATH \
-        --with-gmp=$GMP_ARCH_PATH \
-        --with-mpfr=$MPFR_ARCH_PATH \
-        $withMpc \
+        --with-gmp-include=$GMP_ARCH_PATH/include \
+        --with-gmp-lib=$GMP_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
+        --with-mpfr-include=$MPFR_ARCH_PATH/include \
+        --with-mpfr-lib=$MPFR_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
+        --with-mpc-include=$MPC_ARCH_PATH/include \
+        --with-mpc-lib=$MPC_ARCH_PATH/lib$WM_COMPILER_LIB_ARCH \
         --with-pkgversion=OpenFOAM \
         --enable-languages=c,c++ \
         --enable-__cxa_atexit \
         --enable-libstdcxx-allocator=new \
         --with-system-zlib \
+        $GCC_BUILD_OPTIONS \
         MAKEINFO=missing \
     && make -j $WM_NCOMPPROCS \
     && make install \
@@ -292,4 +303,4 @@ else
 fi
 
 
-# ----------------------------------------------------------------- end-of-file
+#------------------------------------------------------------------------------
