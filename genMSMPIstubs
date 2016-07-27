@@ -28,10 +28,18 @@
 # Description
 #     This script generates the link library and prepares the include
 #   files for MSMPI, based on:
+#
 #      * HPC Pack 2008 R2 SP4 MS-MPI Redistributable Package:
-#        http://www.microsoft.com/download/en/details.aspx?id=14737
+#        https://www.microsoft.com/download/en/details.aspx?id=14737
+#
 #      * HPC Pack 2012 MS-MPI Redistributable Package:
-#        http://www.microsoft.com/en-us/download/details.aspx?id=36045
+#        https://www.microsoft.com/en-us/download/details.aspx?id=36045
+#
+#      * HPC Pack 2012 R2 MS-MPI Redistributable Package:
+#        https://www.microsoft.com/en-us/download/details.aspx?id=41634
+#
+#      * Microsoft MPI 7.1 MS-MPI Redistributable Package:
+#        https://www.microsoft.com/en-us/download/details.aspx?id=52981
 #
 #   This is designed to be installed directly on Windows, so that it's ready
 #   to be used after this script is finished.
@@ -47,19 +55,33 @@ fi
 case $WM_MPLIB in
   MSMPI2008)
     #set up variables
-    INSTPACK_URL="http://download.microsoft.com/download/3/8/D/38D18861-67DE-4E66-92C7-6819D8B07210"
+    INSTPACK_URL="https://download.microsoft.com/download/3/8/D/38D18861-67DE-4E66-92C7-6819D8B07210"
     INSTPACK_X86="mpi_x86.msi"
     INSTPACK_X86_64="mpi_x64.msi"
-    # INSTPACK_URL="http://download.microsoft.com/download/7/6/8/768DA318-6642-40F5-AA76-D8AD75A8E498"
-    # INSTPACK_X86="sdk_x86.msi"
-    # INSTPACK_X86_64="sdk_x64.msi"
     ;;
 
   MSMPI2012)
     #set up variables
-    INSTPACK_URL="http://download.microsoft.com/download/A/1/3/A1397A8C-4751-433C-8330-F738C3BE2187"
+    INSTPACK_URL="https://download.microsoft.com/download/A/1/3/A1397A8C-4751-433C-8330-F738C3BE2187"
     INSTPACK_X86="mpi_x86.Msi"
     INSTPACK_X86_64="mpi_x64.Msi"
+    ;;
+
+  MSMPI2012R2)
+    #set up variables
+    INSTPACK_URL="https://download.microsoft.com/download/B/C/8/BC826318-B57E-490D-82C1-06C99F52C608/"
+    INSTPACK_X86="MSMPISetup.exe"
+    INSTPACK_X86_64=$INSTPACK_X86
+    ;;
+
+  MSMPI71)
+    #set up variables
+    INSTPACK_URL="https://download.microsoft.com/download/E/8/A/E8A080AF-040D-43FF-97B4-065D4F220301/"
+    INSTPACK_X86="MSMpiSetup.exe"
+    INSTPACK_X86_64=$INSTPACK_X86
+    
+    ## Also need SDK installer...
+    INSTPACK_SDK_FILE="msmpisdk.msi"
     ;;
 
   *)
@@ -77,6 +99,14 @@ else
 fi
 
 FINAL_INSTPACK_FILE=${WM_MPLIB}_${INSTPACK_FILE}
+
+if [ -n "$INSTPACK_SDK_FILE" ]
+then
+
+  FINAL_INSTPACK_SDK_FILE=${WM_MPLIB}_${INSTPACK_SDK_FILE}
+
+fi
+
 
 # run from third-party directory only
 cd ${0%/*} || exit 1
@@ -96,12 +126,18 @@ wmakeCheckPwd "$WM_THIRD_PARTY_DIR" || {
 download_files()
 {
   # Make sure wget is installed
-  if test "x`which wget`" = "x" ; then
+  if test "x$(which wget)" = "x"
+  then
     echo "You need to install wget."
     exit 1
   fi
 
   downloadFile $FINAL_INSTPACK_FILE $INSTPACK_URL/$INSTPACK_FILE
+  
+  if [ -n "$FINAL_INSTPACK_SDK_FILE" ]
+  then
+    downloadFile $FINAL_INSTPACK_SDK_FILE $INSTPACK_URL/$INSTPACK_SDK_FILE
+  fi
 }
 
 
@@ -177,6 +213,124 @@ unpack_files()
 
       fi
       
+      cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
+    ;;
+
+    MSMPI2012R2)
+
+      relativePath=${MPI_ARCH_PATH#$WM_THIRD_PARTY_DIR/}
+      chmod +x download//${WM_MPLIB}_${INSTPACK_X86}
+      
+      MSI_INSTALLER_NAME=${WM_MPLIB}_${INSTPACK_X86}_${WM_ARCH_OPTION}.msi
+
+      # Override "run as admin" option. Source: http://superuser.com/a/450503
+      export __COMPAT_LAYER=RUNASINVOKER
+
+      cmd /c "$(echo "download\\${WM_MPLIB}_${INSTPACK_X86} -unattend -nodepends -full -installroot \"%CD%\\${relativePath//\//\\}\"")" &
+
+      echo "WHEN THE INSTALLER ASKS YOU FOR ADMIN PERMISSIONS, SAY NO AFTER A FEW SECONDS"
+
+      while true
+      do
+
+          ( find /tmp -iname "mpi_*.msi" | xargs -I {} cp {} download/${MSI_INSTALLER_NAME} )
+
+          if [ -e "download/${MSI_INSTALLER_NAME}" ]
+          then
+              echo "We have got what we wanted. You can NOW DENY the installer's request to install."
+              break
+          fi
+
+      done
+
+      echo "Currently unpacking what we want..."
+      cmd /c "$(echo "msiexec /a download\\${MSI_INSTALLER_NAME} /qb TARGETDIR=\"%CD%\\${relativePath//\//\\}\"")"
+
+      echo "Unpacking complete."
+
+      if [ $WM_ARCH_OPTION = 32 ]; then
+
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Bin"/*.* "${MPI_ARCH_PATH}/bin/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Inc"/*.* "${MPI_ARCH_PATH}/include/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Lib/i386"/*.* "${MPI_ARCH_PATH}/lib/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/License"/* "${MPI_ARCH_PATH}/"
+        cp "${MPI_ARCH_PATH}/PFiles/System"/*.* "${MPI_ARCH_PATH}/bin/"
+        
+        # The 32-bit version library interface is already compatible with GCC+MinGW
+        cp "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+
+      else
+
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Bin"/*.* "${MPI_ARCH_PATH}/bin/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Inc"/*.* "${MPI_ARCH_PATH}/include/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Lib/amd64"/*.* "${MPI_ARCH_PATH}/lib/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/License"/* "${MPI_ARCH_PATH}/"
+        cp "${MPI_ARCH_PATH}/PFiles/System64"/*.* "${MPI_ARCH_PATH}/bin/"
+
+      fi
+
+      cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
+    ;;
+
+    MSMPI71)
+
+      relativePath=${MPI_ARCH_PATH#$WM_THIRD_PARTY_DIR/}
+      chmod +x download//${WM_MPLIB}_${INSTPACK_X86}
+      
+      MSI_INSTALLER_NAME=${WM_MPLIB}_${INSTPACK_X86}_${WM_ARCH_OPTION}.msi
+
+      # Override "run as admin" option. Source: http://superuser.com/a/450503
+      export __COMPAT_LAYER=RUNASINVOKER
+
+      cmd /c "$(echo "download\\${WM_MPLIB}_${INSTPACK_X86} -unattend -nodepends -full -installroot \"%CD%\\${relativePath//\//\\}\"")" &
+
+      while true
+      do
+
+          ( find /tmp -iname "mpi_*.msi" | xargs -I {} cp {} download/${MSI_INSTALLER_NAME} )
+
+          if [ -e "download/${MSI_INSTALLER_NAME}" ]
+          then
+              echo "We have got what we wanted. You can NOW DENY the installer's request to install."
+              break
+          fi
+
+      done
+
+      echo "Currently unpacking what we want..."
+      cmd /c "$(echo "msiexec /a download\\${MSI_INSTALLER_NAME} /qb TARGETDIR=\"%CD%\\${relativePath//\//\\}\"")"
+
+      cmd /c "$(echo "msiexec /a download\\${FINAL_INSTPACK_SDK_FILE} /qb TARGETDIR=\"%CD%\\${relativePath//\//\\}\"")"
+
+      echo "Unpacking complete."
+
+      if [ $WM_ARCH_OPTION = 32 ]; then
+
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Bin"/*.* "${MPI_ARCH_PATH}/bin/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/License"/* "${MPI_ARCH_PATH}/"
+        cp "${MPI_ARCH_PATH}/PFiles/System"/*.* "${MPI_ARCH_PATH}/bin/"
+
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Include"/*.* "${MPI_ARCH_PATH}/include/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Include/x86"/*.* "${MPI_ARCH_PATH}/include/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Lib/x86"/*.* "${MPI_ARCH_PATH}/lib/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/License"/* "${MPI_ARCH_PATH}/"
+
+        # The 32-bit version library interface is already compatible with GCC+MinGW
+        cp "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+
+      else
+
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/Bin"/*.* "${MPI_ARCH_PATH}/bin/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft MPI/License"/* "${MPI_ARCH_PATH}/"
+        cp "${MPI_ARCH_PATH}/PFiles/System64"/*.* "${MPI_ARCH_PATH}/bin/"
+
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Include"/*.* "${MPI_ARCH_PATH}/include/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Include/x64"/*.* "${MPI_ARCH_PATH}/include/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Lib/x64"/*.* "${MPI_ARCH_PATH}/lib/"
+        cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/License"/* "${MPI_ARCH_PATH}/"
+
+      fi
+
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
     ;;
 
@@ -267,7 +421,7 @@ if [ $# -eq 1 -a "$1" = "clean" ]; then
 
 else
 
-  if test -z "x`which msiexec`" ; then
+  if test -z "x$(which msiexec)" ; then
     echo "The installation application msiexec was not found. Cannot proceed."
     exit 1
   elif ! onWin; then

@@ -1,7 +1,7 @@
 #!/bin/sh
 #------------------------------------------------------------------------------
 # License
-#     Copyright (C) 2011-2014 blueCAPE Lda
+#     Copyright (C) 2011-2016 blueCAPE Lda
 #
 #     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
 #     For more information about these patches, visit:
@@ -63,7 +63,7 @@ echo ========================================
 echo "Build Scotch decomposition library $SCOTCH_VERSION"
 echo "    $SCOTCH_ARCH_PATH"
 
-scotchMakefile=../../etc/wmakeFiles/scotch/Makefile.inc.${WM_COMPILER}.win
+scotchMakefile=../../etc/wmakeFiles/scotch/Makefile.inc.${WM_COMPILER}$WM_LABEL_OPTION
 
 if [ ! -e "$SCOTCH_VERSION/mingw.patch.complete" ]; then
 (
