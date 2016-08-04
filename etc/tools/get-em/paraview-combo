@@ -1,0 +1,83 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2014 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/tools/get-em/paraview-combo
+#
+# Description
+#     This script will provide the list of applications related to this profile.
+#     This script expects to be executed in the base folder where the get-em script is.
+#
+#------------------------------------------------------------------------------
+
+#redundance for default version translation
+PVCOMBO_VERSION="default"
+
+versionVar="PVCOMBO_VERSION"
+appName="paraview-combo"
+appDefaultSep="" #none needed
+appFileExt="" #none needed
+
+
+#
+# Shows the description for this application.
+#
+GE_showDesc()
+{
+  echo "paraview-combo - Retrieve all of the packages for compiling and building ParaView: paraview, cmake, qt."
+}
+
+
+#
+# Updates the file defined in $versionCacheFile, using the mirror url $1 and
+# uses the $testFile as a sandbox.
+#
+GE_update()
+{
+  echo $appName=default > $versionCacheFile
+  echo $appName=latest >> $versionCacheFile
+}
+
+
+#
+# Unroll the version $1, in case it's a combo package.
+#
+GE_unroll()
+{
+  case $1 in
+  default)
+    echo cmake=default
+    echo qt=default
+    echo paraview=default
+    break
+    ;;
+  latest)
+    echo cmake=latest
+    echo qt=latest
+    echo paraview=latest
+    break
+    ;;
+  esac
+}
+
+
+# Finally source the master script
+. etc/tools/get-emScriptFunctions

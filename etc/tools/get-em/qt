@@ -1,0 +1,186 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2014 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/tools/get-em/qt
+#
+# Description
+#     This script will gather the necessary information about the application.
+#     This script expects to be executed in the base folder where the get-em script is.
+#
+# FIXME
+#   * Currently it is hard-coded to use tar.gz.
+#
+#------------------------------------------------------------------------------
+
+versionVar="qt_version"
+appName="qt"
+appDefaultSep="" #none needed
+appFileExt="tar.gz"
+
+WereFilesFound=0
+
+
+#
+# Processes the HTML file defined in "$testFile" and populates the cache files
+# accordingly.
+# The variable "$WereFilesFound" will 0 for none found and 1 for found.
+#
+processFileAndFillCaches()
+{
+  WereFilesFound=0
+  
+  #first check if we can find the files
+  grep -e "qt-everywhere-opensource-src-[4-9]\.[0-9]\.[0-9].$appFileExt" $testFile | \
+    sed -e 's=.*>\ *qt-everywhere-opensource-src-\(.*\)\.'$appFileExt'<.*=\1=' | \
+  while read linefile; do
+    WereFilesFound=1
+
+    echo "qt=$linefile" >> $versionCacheFile
+    echo "${1}qt-everywhere-opensource-src-$linefile.$appFileExt" >> ${versionCacheFile}_urls
+
+  done
+
+}
+
+
+#
+# Shows the description for this application.
+#
+GE_showDesc()
+{
+  echo "qt - Retrieve the Qt package. Size: 150 to 250MB"
+}
+
+
+#
+# Updates the file defined in $versionCacheFile, using the mirror url $1 and
+# uses the $testFile as a sandbox.
+#
+GE_update()
+{
+  [ -r "$versionCacheFile" ] && rm $versionCacheFile
+  [ -r "${versionCacheFile}_urls" ] && rm ${versionCacheFile}_urls
+
+  #There are two major sub-folders that have versions:
+  #  archive/qt/
+  #  official_releases/qt/
+
+  for repoFolder in archive/qt/ official_releases/qt/; do
+
+    wget "$1$repoFolder" -O $testFile > /dev/null 2>&1
+
+    #Those divide into three profiles, e.g.:
+    #  5.1/5.1.1/single/
+    #  4.8/4.8.5/
+    #  4.7/
+
+    #get the major version list and keep only the versions 4.6 and above
+    LIST_MAJOR_VERSIONS=$(grep -e '>[0-9]\.[0-9]/<' $testFile | \
+      sed -e 's=.*>\([0-9]\.[0-9]\)/</.*=\1=' | \
+      grep -v -e "^4\.[0-5]" | \
+      sort -u)
+
+    for mjv in $LIST_MAJOR_VERSIONS; do
+
+      wget "$1$repoFolder$mjv/" -O $testFile > /dev/null 2>&1
+
+      #Therefore, we have to check if the patch version and "single" sub-folders exist,
+      #so that we can add that to the download path.
+      #Examples:
+      #  http://download.qt-project.org/archive/qt/4.7/qt-everywhere-opensource-src-4.7.4.tar.gz
+      #  http://download.qt-project.org/archive/qt/4.8/4.8.4/qt-everywhere-opensource-src-4.8.4.tar.gz
+      #  http://download.qt-project.org/official_releases/qt/4.8/4.8.5/qt-everywhere-opensource-src-4.8.5.tar.gz
+      #  http://download.qt-project.org/official_releases/qt/5.1/5.1.1/single/qt-everywhere-opensource-src-5.1.1.tar.gz
+
+      processFileAndFillCaches "$1$repoFolder$mjv/"
+
+      if [ $WereFilesFound -eq 0 ]; then
+
+        #check for patch version folders
+        LIST_MINOR_VERSIONS=$(grep -e '>[0-9]\.[0-9]\.[0-9]/<' $testFile | \
+          sed -e 's=.*>\([0-9]\.[0-9]\.[0-9]\)/</.*=\1=' | \
+          grep -v -e "^4\.[0-5]" | \
+          sort -u)
+
+        for mijv in $LIST_MINOR_VERSIONS; do
+
+          wget "$1$repoFolder$mjv/$mijv/" -O $testFile > /dev/null 2>&1
+
+          processFileAndFillCaches "$1$repoFolder$mjv/$mijv/"
+
+          if [ $WereFilesFound -eq 0 ]; then
+
+            #check for "single" folders
+            wget "$1$repoFolder$mjv/$mijv/single/" -O $testFile > /dev/null 2>&1
+
+            processFileAndFillCaches "$1$repoFolder$mjv/$mijv/single/"
+
+          fi
+
+        done
+          
+      fi
+
+    done
+
+  done
+
+  rm $testFile
+
+  #Sort the version numbers
+  sort -u ${versionCacheFile} > ${versionCacheFile}_tmp
+  mv ${versionCacheFile}_tmp ${versionCacheFile}
+}
+
+
+#
+# Receives the mirror url $1, the real version $2 and the variable $appFileExt.
+# Shows the full url for the file to be downloaded.
+#
+GE_geturl()
+{
+  grep -e "\-${2}\." ${versionCacheFile}_urls
+}
+
+
+#
+# Echoes the relative path of the target folder. Receives the real version $1.
+#
+GE_getfolder()
+{
+  echo qt-everywhere-opensource-src-$1
+}
+
+
+#
+# Echoes the number of folder levels counting from the left that the unpacker
+# should drop. This is (or at least it should be) a prevention mechanism for
+# tar/zipbombs.
+#
+GE_levels()
+{
+  echo 1
+}
+
+
+# Finally source the master script
+. etc/tools/get-emScriptFunctions
