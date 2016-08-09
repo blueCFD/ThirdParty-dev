@@ -33,111 +33,12 @@
 #
 #------------------------------------------------------------------------------
 
-case "$WM_COMPILER" in
-Gcc | Gcc++0x | Gcc48 | Gcc48++0x)
-    gcc_version=gcc-4.8.2
-    gmp_version=gmp-5.1.2
-    mpfr_version=mpfr-3.1.2
-    mpc_version=mpc-1.0.1
+. $WM_PROJECT_DIR/etc/config.sh/compiler
 
-    binutils_version="binutils-2.23.52"
-    ;;
-Gcc49 | Gcc49++0x)
-    gcc_version=gcc-4.9.0
-    gmp_version=gmp-5.1.2
-    mpfr_version=mpfr-3.1.2
-    mpc_version=mpc-1.0.1
-
-    binutils_version="binutils-2.23.52"
-    ;;
-Gcc47 | Gcc47++0x)
-    gcc_version=gcc-4.7.3
-    gmp_version=gmp-5.0.4
-    mpfr_version=mpfr-3.1.0
-    mpc_version=mpc-0.9
-
-    binutils_version="binutils-2.23.52"
-    ;;
-Clang)
-    clang_version=llvm-3.4
-
-    gmp_version=gmp-5.1.2
-    mpfr_version=mpfr-3.1.2
-    ;;
-
-mingw32)
-#     gcc_version="gcc-4.5.4"
-#     gmp_version="gmp-4.3.2"
-#     mpfr_version="mpfr-2.4.2"
-#     mpc_version="mpc-0.8.2"
-#     binutils_version="binutils-2.22.52"
-
-#     gcc_version=gcc-4.6.4
-#     gmp_version=gmp-5.0.2
-#     mpfr_version=mpfr-3.0.1
-#     mpc_version=mpc-0.9
-#     binutils_version="binutils-2.22.52"
-
-    gcc_version=gcc-4.7.3
-    gmp_version=gmp-5.0.4
-    mpfr_version=mpfr-3.0.1
-    mpc_version=mpc-0.9
-    binutils_version="binutils-2.23.52"
-
-#     gcc_version=gcc-4.8.2
-#     gmp_version=gmp-5.1.2
-#     mpfr_version=mpfr-3.1.2
-#     mpc_version=mpc-1.0.1
-#     binutils_version="binutils-2.23.52"
-
-    #MinGW versions
-    mingw32rt_version="mingwrt-3.20"
-    w32api_version="w32api-3.17-2"
-    ;;
-
-mingw-w32 | mingw-w64)
-#     gcc_version="gcc-4.5.4"
-#     gmp_version="gmp-4.3.2"
-#     mpfr_version="mpfr-2.4.2"
-#     mpc_version="mpc-0.8.2"
-#     binutils_version="binutils-2.22.52"
-
-#     gcc_version=gcc-4.6.4
-#     gmp_version=gmp-5.0.2
-#     mpfr_version=mpfr-3.0.1
-#     mpc_version=mpc-0.9
-#     binutils_version="binutils-2.22.52"
-
-    gcc_version=gcc-4.7.3
-    gmp_version=gmp-5.0.4
-    mpfr_version=mpfr-3.0.1
-    mpc_version=mpc-0.9
-    binutils_version="binutils-2.23.52"
-
-#     gcc_version=gcc-4.8.2
-#     gmp_version=gmp-5.1.2
-#     mpfr_version=mpfr-3.1.2
-#     mpc_version=mpc-1.0.1
-#     binutils_version="binutils-2.23.52"
-
-    #MinGW versions
-    mingw_w64_version="3.1.0"
-    ;;
-
-*)
-    echo
-    echo "Warning in $WM_THIRD_PARTY_DIR/etc/defaults.sh:"
-    echo "    Unknown OpenFOAM compiler type '$WM_COMPILER'"
-    echo "    Please check your settings"
-    echo
-    ;;
-esac
-
-metis_version=$(. $WM_PROJECT_DIR/etc/config/metis.sh; \
+metis_version=$(. $WM_PROJECT_DIR/etc/config.sh/metis; \
     echo $METIS_VERSION | sed -e 's=metis-==')
 
-boost_version=boost_1_54_0
-cgal_version=CGAL-4.3
+. $WM_PROJECT_DIR/etc/config.sh/CGAL
 
 make_version=4.0
 flex_version=2.5.35
