@@ -40,14 +40,21 @@ libdir		= ../../lib
 
 include ../Makefile.inc
 
+ifeq ("$(SCOTCHLIB)","ptscotch")
+LDFLAGS_PT ?= $(LDFLAGS)
+LDFLAGSX = $(LDFLAGS_PT)
+else
+LDFLAGSX = $(LDFLAGS)
+endif
+
 %$(EXE)	:	%$(OBJ)
-		 		$(CC) $(CFLAGS) -I$(includedir) -I../libscotch $(<) -o $(@) -L$(libdir) -l$(SCOTCHLIB) -lscotch -l$(SCOTCHLIB)errexit $(LDFLAGS)
+		 		$(CC) $(CFLAGS) -I$(includedir) -I../libscotch $(<) -o $(@) -L$(libdir) -l$(SCOTCHLIB) -lscotch -l$(SCOTCHLIB)errexit $(LDFLAGSX)
 
 %$(OBJ)	:	%.c
 				$(CC) $(CFLAGS) -I$(includedir) -I../libscotch -c $(<) -o $(@)
 
 %$(EXE)	:	%.c
-		 		$(CC) $(CFLAGS) -I$(includedir) -I../libscotch $(<) -o $(@) -L$(libdir) -l$(SCOTCHLIB) -lscotch -l$(SCOTCHLIB)errexit $(LDFLAGS)
+		 		$(CC) $(CFLAGS) -I$(includedir) -I../libscotch $(<) -o $(@) -L$(libdir) -l$(SCOTCHLIB) -lscotch -l$(SCOTCHLIB)errexit $(LDFLAGSX)
 
 ##
 ##  Project rules.
@@ -205,7 +212,7 @@ dgpart$(EXE)			:	dgmap.c					\
 					$(libdir)/libptscotch$(LIB)		\
 					$(libdir)/libptscotcherrexit$(LIB)	\
 					dgmap.h
-			 		$(CC) $(CFLAGS) -I$(includedir) -I../libscotch $(<) -DSCOTCH_COMPILE_PART -o $(@) -L$(libdir) -lptscotch -lscotch -lptscotcherrexit $(LDFLAGS)
+			 		$(CC) $(CFLAGS) -I$(includedir) -I../libscotch $(<) -DSCOTCH_COMPILE_PART -o $(@) -L$(libdir) -lptscotch -lscotch -lptscotcherrexit $(LDFLAGSX)
 
 dgscat$(EXE)			:	dgscat.c				\
 					../libscotch/module.h			\

@@ -62,8 +62,14 @@
 **  The static variables.
 */
 
+#if defined(WIN32) || defined(WIN64)
+#define DEFERRED_ADDRESS(address) 0
+#else
+#define DEFERRED_ADDRESS(address) address
+#endif
+
 static int                  dgraphstatblentab[2] = { 7, 3 };
-static MPI_Datatype         dgraphstattypetab[2] = { GNUM_MPI, MPI_DOUBLE };
+static MPI_Datatype         dgraphstattypetab[2] = { DEFERRED_ADDRESS(GNUM_MPI), DEFERRED_ADDRESS(MPI_DOUBLE) };
 
 /************************************/
 /*                                  */
@@ -146,6 +152,12 @@ double *                    edlodltptr)
   double              edloglbavg;
   double              edlolocdlt;
   int                 o;
+
+#if defined(WIN32) || defined(WIN64)
+  //Had to re-route the initiallization of dgraphstattypetab, for compatibility with MinGW dllimports
+  dgraphstattypetab[0] = GNUM_MPI;
+  dgraphstattypetab[1] = MPI_DOUBLE;
+#endif
 
   srcgrafptr = (Dgraph *) grafptr;
 

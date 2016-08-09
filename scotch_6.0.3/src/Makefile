@@ -55,6 +55,8 @@ Makefile.inc			:
 
 include Makefile.inc
 
+CPLIB ?= $(LIB)
+
 prefix		?= /usr/local
 bindir		?= $(prefix)/bin
 includedir	?= $(prefix)/include
@@ -115,7 +117,7 @@ install				:	required	$(bindir)	$(includedir)	$(libdir)	$(mandir)/man1
 					-$(CP) -f ../bin/[agm]*$(EXE) $(bindir)
 					-$(CP) -f ../bin/d[agm]*$(EXE) $(bindir)
 					-$(CP) -f ../include/*scotch*.h $(includedir)
-					-$(CP) -f ../lib/*scotch*$(LIB) $(libdir)
+					-$(CP) -f ../lib/*scotch*$(CPLIB) $(libdir)
 					-$(CP) -Rf ../man/* $(mandir)
 
 clean				:	required
