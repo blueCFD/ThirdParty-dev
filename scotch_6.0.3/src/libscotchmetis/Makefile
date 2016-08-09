@@ -40,6 +40,8 @@ libdir		= ../../lib
 
 include ../Makefile.inc
 
+CPLIB ?= $(LIB)
+
 %$(OBJ)	:	%.c
 				$(CC) $(CFLAGS) $(CLIBFLAGS) -I$(includedir) -I../libscotch -c $(<) -o $(@)
 
@@ -62,14 +64,14 @@ ptscotch			:
 
 install				:	scotch
 					-$(CP) metis.h $(includedir)
-					-$(CP) libscotchmetis$(LIB) $(libdir)
+					-$(CP) libscotchmetis$(CPLIB) $(libdir)
 
 ptinstall			:	ptscotch
 					-$(CP) parmetis.h $(includedir)
-					-$(CP) libptscotchparmetis$(LIB) $(libdir)
+					-$(CP) libptscotchparmetis$(CPLIB) $(libdir)
 
 clean				:
-					-$(RM) *~ *$(OBJ) lib*$(LIB)
+					-$(RM) *~ *$(OBJ) lib*$(LIB) lib*.a lib*.def
 
 realclean			:	clean
 
@@ -129,12 +131,12 @@ libptscotchparmetis$(LIB)	:	parmetis_dgraph_order$(OBJ)		\
 					parmetis_dgraph_order_f$(OBJ)		\
 					parmetis_dgraph_part$(OBJ)		\
 					parmetis_dgraph_part_f$(OBJ)
-					$(AR) $(ARFLAGS) $(@) $(^)
+					$(AR) $(ARFLAGS) $(@) $(^) $(ARPMFLAGS)
 					-$(RANLIB) $(@)
 
 libscotchmetis$(LIB)		:	metis_graph_order$(OBJ)			\
 					metis_graph_order_f$(OBJ)		\
 					metis_graph_part$(OBJ)			\
 					metis_graph_part_f$(OBJ)
-					$(AR) $(ARFLAGS) $(@) $(^)
+					$(AR) $(ARFLAGS) $(@) $(^) $(ARSMFLAGS)
 					-$(RANLIB) $(@)

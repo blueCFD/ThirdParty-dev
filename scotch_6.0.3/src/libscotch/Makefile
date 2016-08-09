@@ -39,6 +39,8 @@ libdir		= ../../lib
 
 include ../Makefile.inc
 
+CPLIB ?= $(LIB)
+
 %$(OBJ)	:	%.c
 				$(CC) $(CFLAGS) $(CLIBFLAGS) -c $(<) -o $(@)
 
@@ -55,17 +57,17 @@ scotch				:
 					$(MAKE) CC="$(CCS)" CCD="$(CCS)"	\
 					scotch.h				\
 					scotchf.h				\
-					libscotch$(LIB)				\
 					libscotcherr$(LIB)			\
-					libscotcherrexit$(LIB)
+					libscotcherrexit$(LIB)			\
+					libscotch$(LIB)
 
 ptscotch			:	scotch
 					$(MAKE) CFLAGS="$(CFLAGS) -DSCOTCH_PTSCOTCH" CC="$(CCP)"	\
 					ptscotch.h							\
 					ptscotchf.h							\
-					libptscotch$(LIB)						\
 					libptscotcherr$(LIB)						\
-					libptscotcherrexit$(LIB)
+					libptscotcherrexit$(LIB)					\
+					libptscotch$(LIB)
 
 install				:	$(includedir)/scotch.h			\
 					$(includedir)/scotchf.h			\
@@ -77,7 +79,7 @@ ptinstall			:	install					\
 					$(libdir)/libptscotch$(LIB)
 
 clean				:
-					-$(RM) *~ *$(OBJ) lib*$(LIB) parser_yy.c parser_ly.h parser_ll.c *scotch.h *scotchf.h y.output *dummysizes$(EXE)
+					-$(RM) *~ *$(OBJ) lib*$(LIB) lib*.def lib*.a parser_yy.c parser_ly.h parser_ll.c *scotch.h *scotchf.h y.output *dummysizes$(EXE)
 
 realclean			:	clean
 
@@ -99,10 +101,10 @@ $(includedir)/ptscotchf.h	:	ptscotchf.h
 					-$(CP) ptscotchf.h $(includedir)
 
 $(libdir)/libscotch$(LIB)	:	libscotch$(LIB)
-					-$(CP) libscotch$(LIB) libscotcherr*$(LIB) $(libdir)
+					-$(CP) libscotch$(CPLIB) libscotcherr*$(CPLIB) $(libdir)
 
 $(libdir)/libptscotch$(LIB)	:	libptscotch$(LIB)
-					-$(CP) libptscotch$(LIB) libptscotcherr*$(LIB) $(libdir)
+					-$(CP) libptscotch$(CPLIB) libptscotcherr*$(CPLIB) $(libdir)
 
 ##
 ##  Library dependencies.
@@ -2963,7 +2965,7 @@ ptscotchf.h			:	ptdummysizes$(EXE)			\
 					./ptdummysizes$(EXE) library_pt_f.h ptscotchf.h
 
 libscotch$(LIB)			:	$(LIBSCOTCHDEPS)
-					$(AR) $(ARFLAGS) $(@) $(?)
+					$(AR) $(ARFLAGS) $(@) $(?) $(ARSFLAGS)
 					-$(RANLIB) $(@)
 
 libscotcherr$(LIB)		:	library_error$(OBJ)
@@ -2975,13 +2977,13 @@ libscotcherrexit$(LIB)		:	library_error_exit$(OBJ)
 					-$(RANLIB) $(@)
 
 libptscotch$(LIB)		:	$(LIBPTSCOTCHDEPS)
-					$(AR) $(ARFLAGS) $(@) $(?)
+					$(AR) $(ARFLAGS) $(@) $(?) $(ARPFLAGS)
 					-$(RANLIB) $(@)
 
 libptscotcherr$(LIB)		:	library_error_pt$(OBJ)
-					$(AR) $(ARFLAGS) $(@) $(?)
+					$(AR) $(ARFLAGS) $(@) $(?)  $(LDFLAGS_P1_PT)
 					-$(RANLIB) $(@)
 
 libptscotcherrexit$(LIB)	:	library_error_exit_pt$(OBJ)
-					$(AR) $(ARFLAGS) $(@) $(?)
+					$(AR) $(ARFLAGS) $(@) $(?)  $(LDFLAGS_P1_PT)
 					-$(RANLIB) $(@)
