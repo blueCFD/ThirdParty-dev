@@ -414,7 +414,8 @@ echo '--- mpi.h_orig  2011-01-18 15:11:38.284485101 +0000
 
 function cleanup
 {
-  if [ -n "$BUILDDIR" -a -e "$BUILDDIR" ]; then
+  if [ -n "$BUILDDIR" -a -e "$BUILDDIR" ]
+  then
     rm -rf "$BUILDDIR"
   fi
 }
@@ -424,19 +425,22 @@ function cleanup
 BUILDDIR="$MPI_ARCH_PATH"
 SRCDIR="$MPI_HOME/source"
 
-if [ $# -eq 1 -a "$1" = "clean" ]; then
+if [ $# -eq 1 -a "$1" = "clean" ]
+then
 
   echo -e "\033[1m Cleaning up MSMPI stub... \033[0m"
   cleanup
 
 else
 
-  if test -z "x$(which msiexec)" ; then
+  if [ -z "$(which msiexec)" ]
+  then
     echo "The installation application msiexec was not found. Cannot proceed."
     exit 1
   elif ! onWin; then
     echo "This script was designed to be used on Windows (using MSYS/MinGW). Cannot proceed."
-    exit 1
+    echo "Best download a pre-prepared package."
+    exit 0
   fi
 
   if [ ! -e "$BUILDDIR/lib/libmpi.a" ]; then
