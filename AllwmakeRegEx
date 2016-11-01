@@ -119,7 +119,7 @@ copyLibsToFoam()
   if [ -d "$REGEXTARGET/lib" ] && ! onWin; then
     mkdir -p $FOAM_LIBBIN
     if [ -d "$FOAM_LIBBIN" ]; then
-      cp -r $REGEXTARGET/include/* $FOAM_SRC/OSspecific/MSwindows/
+      cp -r $REGEXTARGET/include/* $FOAM_SRC/OpenFOAM/include/
       cp $REGEXTARGET/lib/* $FOAM_LIBBIN/
       cp $REGEXTARGET/bin/* $FOAM_LIBBIN/
     fi
