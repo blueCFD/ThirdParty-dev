@@ -1,0 +1,120 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2014 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/tools/get-em/boost
+#
+# Description
+#     This script will gather the necessary information about the application.
+#     This script expects to be executed in the base folder where the get-em script is.
+#
+# FIXME
+#   * Currently it is hard-coded to use 7z.
+#
+#------------------------------------------------------------------------------
+
+versionVar="boost_version_mod"
+appName="boost"
+appDefaultSep="_"
+appFileExt="7z"
+
+boost_version_mod=$(. etc/defaults.sh ; \
+                   echo $boost_version | \
+                   sed 's/'${appName}${appDefaultSep}'//' | \
+                   sed -e 's=_=\.=g')
+
+#
+# Change $1 xx.xx.xx to xx_xx_xx
+#
+changeVersionToUnderScores()
+{
+  echo $1 | sed -e 's=\.=_=g'
+}
+
+
+#
+# Change $1 xx_xx_xx to xx.xx.xx
+#
+changeVersionToDots()
+{
+  echo $1 | sed -e 's=_=\.=g'
+}
+
+
+#
+# Shows the description for this application.
+#
+GE_showDesc()
+{
+  echo "boost - Retrieve the Boost C++ package. Size: 40 to 60MB"
+}
+
+
+#
+# Updates the file defined in $versionCacheFile, using the mirror url $1 and
+# uses the $testFile as a sandbox.
+#
+GE_update()
+{
+  wget "${1}" -O $testFile > /dev/null 2>&1
+  grep -e 'href.*/[0-9.]*/"' $testFile | \
+    sed -e 's=.*\(/[0-9.]*\)/.*=\1=' -e 's_/_boost=_' | \
+    grep -v -e "=1\.[0-3][0-9]*" | \
+    sort -u > $versionCacheFile
+  rm $testFile
+}
+
+
+#
+# Receives the mirror url $1, the real version $2 and the variable $appFileExt.
+# Shows the full url for the file to be downloaded.
+#
+GE_geturl()
+{
+  VERSION_dots=`changeVersionToDots $2`
+  VERSION__=`changeVersionToUnderScores $2`
+  echo ${1}${VERSION_dots}/boost_${VERSION__}.$appFileExt/download
+}
+
+
+#
+# Echoes the relative path of the target folder. Receives the real version $1.
+#
+GE_getfolder()
+{
+  VERSION__=`changeVersionToUnderScores $1`
+  echo boost_$VERSION__
+}
+
+
+#
+# Echoes the number of folder levels counting from the left that the unpacker
+# should drop. This is (or at least it should be) a prevention mechanism for
+# tar/zipbombs.
+#
+GE_levels()
+{
+  echo 1
+}
+
+
+# Finally source the master script
+. etc/tools/get-emScriptFunctions

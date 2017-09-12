@@ -1,0 +1,624 @@
+#---------------------------------*- sh -*-------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2013 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/tools/get-emScriptFunctions
+#
+# Description
+#     Functions for the scripts called from get-em and made available at
+#   "etc/tools/get-em/".
+#
+# Requirements
+#     Assumes that the current work folder is the base ThirdParty folder.
+#
+#   Predefined variables
+#     versionVar    - should have the name of the default variable
+#                     name defined in "etc/default.sh".
+#     appName       - should have the short name of the application,
+#                     which usually is the script's name.
+#     appDefaultSep - should have the character that is used as a separator
+#                     between the application short name and the version number.
+#                     If none is required, then set it as "".
+#     appFileExt    - should have the whole extension (without the first dot)
+#                     for the file to be downloaded. The usual is "tar.gz".
+#
+#   Predefined functions
+#     GE_showDesc   - shows the description for the calling script.
+#     GE_update     - Does the real update protocol for filling the file
+#                     defined by $versionCacheFile .
+#     GE_geturl     - Should echo the complete url for the file to be
+#                     downloaded.
+#     GE_getfolder  - Should echo the relative path of the target folder.
+#                     Usually should simply be the name for such folder.
+#     GE_getfilename- Optional function, Required only for special filenaming
+#                     scenarios.
+#     GE_getfileext - Optional function, Required only for special file
+#                     extension scenarios.
+#     GE_levels     - Should echo the number of folder levels counting from the
+#                     left, should the unpacker drop. This is a prevention
+#                     mechanism for tar/zipbombs.
+#     GE_update     - Should echo the list of packages to be installed instead
+#                     of this one. This function is only required for combo
+#                     systems.
+#     GE_exe_msi_unpack - Optional function, required mostly for (cross-)
+#                     compiling for Windows.
+#
+#------------------------------------------------------------------------------
+
+#These will register pertinent information for the calling script
+Script=${0##*/}
+path2Script=${0%/*}
+serverMirrorFile=$path2Script/$Script.mirrors
+versionCacheFile=$path2Script/$Script.cache
+testFile="$Script.dumpfile.$$"
+defaultsFile="etc/defaults.sh"
+defaultDownloadFolder="download"
+
+if [ ! -d "$defaultDownloadFolder" ]; then
+  mkdir $defaultDownloadFolder
+fi
+
+
+#
+# Showing the list of options available for each script
+#
+GETEM_usage() {
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage
+    Must be executed from the ThirdParty folder and OpenFOAM's environment
+  must be active. Usage:
+     $Script description
+     $Script update MIRROR_URL
+     $Script versions MIRROR_URL
+     $Script unroll VERSION
+     $Script getmirror
+     $Script listmirrors
+     $Script optmirrors
+     $Script pickmirror POSITION
+     $Script geturl MIRROR_URL VERSION
+     $Script getversion MIRROR_URL VERSION
+     $Script getfilename VERSION
+     $Script cache VERSION
+     $Script purge VERSION
+     $Script remove VERSION
+     $Script unpack VERSION
+
+Valid options (use only one per command)
+  description          show the description for this application.
+  update MIRROR_URL    updates the list of versions available.
+  versions MIRROR_URL  show the list of versions available for this application.
+  unroll VERSION       in case of combo packages, show the list of packages; otherwise, return the same "app=version".
+  getmirror            show the first mirror in the list.
+  listmirrors          show the list of mirrors.
+  optmirrors           optimize the list of mirrors.
+  pickmirror POSITION  pick a mirror position from the list.
+  geturl MIRROR_URL VERSION      get the link for the desired version to download.
+  getversion MIRROR_URL VERSION  get the true version.
+  getfilename VERSION  get the filename for the desired version (true version only).
+  verifyfile VERSION   verify if the package's integrity for the desired version (true version only).
+  cache VERSION        check if the version is already downloaded. Shows YES if available.
+  purge VERSION        removes the downloaded package for the selected version.
+  remove VERSION       removes the application source folder for the selected version.
+  unpack VERSION       unpacks the downloaded package for the selected version.
+
+USAGE
+    exit 1
+}
+
+#automatic validation, before sourcing the remaining functions
+[ "$#" -eq 0 ] && GETEM_usage "Missing any options."
+
+
+# ---------------------------------------------------------- start of functions
+
+
+#
+# Check if function exists
+# Returns exit code 0 if found and exit code 1.
+#
+GETEM_fn_exists()
+{
+  export LC_ALL=C
+  type $1 2>/dev/null | grep " function" > /dev/null
+}
+
+
+#
+# Validate if version $2 is valid, based on the available mirror url $1.
+# Returns text messages: "" for valid, "INVALID" for invalid.
+#
+GETEM_version_validation()
+{
+  VERSION=`GETEM_versions $1 | grep -e '='$2'$'`
+  if [ -z "$VERSION" ]; then
+    echo "INVALID"
+  else
+    echo ""
+  fi
+}
+
+
+#
+# Tries to do a manual path stripping of $2 levels on the folder $1.
+#
+GETEM_moveFilesIntoPlace()
+{
+  if [ $2 -eq 1 ]; then
+    mv "$1"/*/* "$1"/
+  elif [ $2 -gt 1 ]; then
+    echo "Application '$appName': in compatibility mode with tar versions \
+< 1.40, only level <=1 path stripping is supported." >&2
+    exit 1
+  fi
+}
+
+
+#
+# Call GE_showDesc for the real description, predefined in the calling
+# script
+#
+GETEM_showDescription()
+{
+  if GETEM_fn_exists GE_showDesc; then
+    GE_showDesc
+  else
+    GETEM_usage "Function 'GE_showDesc' is missing."
+  fi
+}
+
+
+#
+# Calls the function GE_update do the real update protocol, sending it the
+# mirror url $1 and version $2
+#
+GETEM_update()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing MIRROR_URL for version listing."
+  if GETEM_fn_exists GE_update; then
+    GE_update $1 $2
+  else
+    GETEM_usage "Function 'GE_update' is missing."
+  fi
+}
+
+
+#
+# Shows the list of available versions for the given mirror url $1 and version $2.
+# The mirror url is necessary for automatic retrieval of the list of versions.
+#
+GETEM_versions()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing MIRROR_URL for version listing."
+  [ ! -r "$versionCacheFile" ] && GETEM_update $1 $2 #force an update
+  [ ! -r "$versionCacheFile" ] && GETEM_usage "Unable to update the list of versions"
+  cat $versionCacheFile
+}
+
+
+#
+# Show the first mirror on the list
+#
+GETEM_getmirror()
+{
+  if [ -r $serverMirrorFile ]; then
+    head -n 1 $serverMirrorFile
+  else
+    usage "No mirrors available for application '$Script'."
+  fi
+}
+
+#
+# Show all mirrors
+#
+GETEM_listmirrors()
+{
+  if [ -r $serverMirrorFile ]; then
+    cat $serverMirrorFile
+  else
+    usage "No mirrors available for application '$Script'."
+  fi
+}
+
+
+#
+# Sort mirrors by closest to farthest.
+#
+GETEM_optmirrors()
+{
+  if [ `cat $serverMirrorFile | wc -l` -gt 1 ]; then
+    [ -r $testFile ] && rm $testFile
+    for mirror in `cat $serverMirrorFile`; do
+      timednow=`export LC_ALL=C; wget -O /dev/null $mirror 2>&1 | \
+                grep -e "B/s)" | \
+                sed -e 's=.*(\([0-9.]* [a-zA-Z]B/s\).*=\1='`
+      echo $timednow - $mirror
+      timednow=`echo $timednow | sed -e 's=\..* = =' | \
+                sed -e 's= K=000 =' -e 's= M=000000 =' \
+                    -e 's= G=000000000 =' -e 's= T=000000000000 ='`
+      echo $timednow $mirror >> $testFile
+      sort -nr $testFile | sed -e 's=^.* ==' > $serverMirrorFile
+    done
+    [ -r $testFile ] && rm $testFile
+  fi
+}
+
+
+#
+# Pick a mirror $1 from the mirror list by closest to farthest.
+#
+GETEM_pickmirror()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing POSITION for mirror picking."
+  MIRRORCOUNT=`cat $serverMirrorFile | wc -l`
+  if [ $MIRRORCOUNT -gt 1 -a $1 -ge 1 -a $1 -le $MIRRORCOUNT ]; then
+    [ -r $testFile ] && rm $testFile
+    mirror=`cat $serverMirrorFile | sed -n $1'p'`
+    echo $mirror > $testFile
+    grep -v "$mirror" $serverMirrorFile >> $testFile
+    cat $testFile > $serverMirrorFile
+    [ -r $testFile ] && rm $testFile
+  fi
+}
+
+
+#
+# Gets the full url for downloading the file.
+# Receives the mirror url $1 and the literal version $2, then calls the GE_geturl function
+# that has been defined in the caller script with the same mirror url and but with the real version.
+#
+GETEM_geturl()
+{
+  [ "$#" -lt 2 ] && GETEM_usage "Missing MIRROR_URL and/or VERSION for url retrieval."
+  VERSION=`GETEM_getversion $1 $2`
+  if [ -n "`GETEM_version_validation $1 $VERSION`" ]; then
+    echo "Version $2 for $appName is invalid."
+    exit 1
+  fi
+  GE_geturl $1 $VERSION
+}
+
+
+#
+# Unroll the version $1, in case it's a combo package.
+#
+GETEM_unroll()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for unrolling."
+
+  if GETEM_fn_exists GE_unroll; then
+    GE_unroll $1
+  else
+    echo $Script=$1
+  fi
+}
+
+
+#
+# Gets the real version definition, by translating the literal one.
+# Receives the mirror url $1 and the literal version $2. Needs the predefined variables "versionVar",
+# "appName" and "appDefaultSep" to be properly defined prior to sourcing this script.
+#
+GETEM_getversion()
+{
+  [ "$#" -lt 2 ] && GETEM_usage "Missing MIRROR_URL and/or VERSION for true version retrieval."
+  case $2 in
+  default)
+    VERSION=$(. $defaultsFile ; eval echo "$"$versionVar | sed 's/'${appName}${appDefaultSep}'//')
+    break
+    ;;
+  latest)
+    VERSION=`GETEM_versions $1 | tail -n 1 | sed -e 's/'$appName'=//'`
+    break
+    ;;
+  *)
+    VERSION=$2
+    break
+    ;;
+  esac
+  echo $VERSION
+}
+
+
+#
+# Receives the real version $1 and returns the package name. Needs "appName" and "appFileExt"
+# to be defined prior to sourcing this script.
+#
+GETEM_getfilename()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for filename retrieval."
+  if GETEM_fn_exists GE_getfilename; then
+    GE_getfilename $1
+  else
+    echo $appName-$1.$(GETEM_getfileextension $1)
+  fi
+}
+
+#
+# Receives the real version $1 and returns the package extension. Needs "appFileExt"
+# to be defined prior to sourcing this script.
+#
+GETEM_getfileextension()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for file extension retrieval."
+  if GETEM_fn_exists GE_getfileext; then
+    GE_getfileext $1
+  else
+    echo $appFileExt
+  fi
+}
+
+
+#
+# Verifies if the file is valid. The validation is made using the unpacking
+# applications to test themselves the downloaded files.
+#
+GETEM_verifyfile()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for file verification."
+  FILENAME=`GETEM_getfilename $1`
+  [ -r $defaultDownloadFolder/$FILENAME.complete ] && rm $defaultDownloadFolder/$FILENAME.complete
+  [ -r $defaultDownloadFolder/$FILENAME.incomplete ] && rm $defaultDownloadFolder/$FILENAME.incomplete
+
+  FILEEXTENSION=$(GETEM_getfileextension $1)
+
+  #process depending on file extension
+  VERIFY_STATUS=0
+  case $FILEEXTENSION in
+  tar.gz)
+     tar -tzf $defaultDownloadFolder/$FILENAME > /dev/null 2>&1 && VERIFY_STATUS=1
+     break
+     ;;
+  tar.bz2)
+     tar -tjf $defaultDownloadFolder/$FILENAME > /dev/null 2>&1 && VERIFY_STATUS=1
+     break
+     ;;
+  tar.lzma)
+     tar --lzma -tf $defaultDownloadFolder/$FILENAME > /dev/null 2>&1 && VERIFY_STATUS=1
+     break
+     ;;
+  zip)
+     unzip -t $defaultDownloadFolder/$FILENAME > /dev/null 2>&1 && VERIFY_STATUS=1
+     break
+     ;;
+  exe|msi)
+     7z t $defaultDownloadFolder/$FILENAME > /dev/null 2>&1 && VERIFY_STATUS=1
+     break
+     ;;
+  7z)
+     7z t $defaultDownloadFolder/$FILENAME > /dev/null 2>&1 && VERIFY_STATUS=1
+     break
+     ;;
+  *)
+    GETEM_usage "File extension '$FILEEXTENSION' is not recognized for validation."
+    ;;
+  esac
+
+  if [ $VERIFY_STATUS -eq 1 ]; then
+    touch $defaultDownloadFolder/$FILENAME.complete
+    echo "OK"
+  else
+    touch $defaultDownloadFolder/$FILENAME.incomplete
+  fi
+}
+
+
+#
+# Checks if the package file for the version $1 is available in the cache.
+#
+GETEM_cache()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for cache check."
+  FILENAME=`GETEM_getfilename $1`
+  if [ -r $defaultDownloadFolder/$FILENAME.complete ]; then
+    echo "YES"
+  elif [ -r $defaultDownloadFolder/$FILENAME.incomplete ]; then
+    echo "INCOMPLETE"
+  elif [ -r $defaultDownloadFolder/$FILENAME ]; then
+    echo "EXISTS"
+  fi
+}
+
+
+#
+# Removes the package file for the version $1 from the cache.
+#
+GETEM_purge()
+{
+  [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for purging."
+  FILENAME=`GETEM_getfilename $1`
+  [ -r $defaultDownloadFolder/$FILENAME ] && rm $defaultDownloadFolder/$FILENAME
+  [ -r $defaultDownloadFolder/$FILENAME.complete ] && rm $defaultDownloadFolder/$FILENAME.complete
+  [ -r $defaultDownloadFolder/$FILENAME.incomplete ] && rm $defaultDownloadFolder/$FILENAME.incomplete
+}
+
+
+#
+# Unpack the file version $1, using the designation defined by GE_getfolder
+#
+GETEM_unpackFile()
+{
+  if GETEM_fn_exists GE_getfolder && GETEM_fn_exists GE_levels; then
+    [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for unpacking."
+    FILENAME=$(GETEM_getfilename $1)
+    FILEEXTENSION=$(GETEM_getfileextension $1)
+    FOLDER=$(GE_getfolder $1)
+    LEVELS2KILL=$(GE_levels $1)
+    DO_UNPACK_IT=1;
+
+    if [ -d $FOLDER ]; then
+      THE_ANSWER=""
+      while [ -z "$THE_ANSWER" ]; do
+        echo "The folder $FOLDER already exists. (R)emove the folder, (O)verwrite or (S)kip?"
+        read THE_ANSWER
+        case $THE_ANSWER in
+        R | r)
+          GETEM_removeFolder $1
+          break
+          ;;
+        O | o)
+          #do nothing... simply go ahead and do it!
+          break
+          ;;
+        S | s)
+          DO_UNPACK_IT=0;
+          echo Skipping file...
+          break
+          ;;
+        *)
+          echo Invalid answer...
+          THE_ANSWER=""
+          break
+          ;;
+        esac
+      done
+      unset THE_ANSWER
+    fi
+
+    if [ ! -f "$defaultDownloadFolder/$FILENAME" ]; then
+      echo "Could not unpack $FILENAME"
+      exit 1
+    elif [ $DO_UNPACK_IT -eq 1 ]; then
+
+      #divide algorithm by major file type
+      case $FILEEXTENSION in
+      tar.*)
+        TAR_STRIP_OPTION=""
+        if [ -n "`export LC_ALL=C; tar --help | grep strip-path`" ]; then
+          TAR_STRIP_OPTION="--strip-path=$LEVELS2KILL"
+        elif [ -n "`export LC_ALL=C; tar --help | grep strip-components`" ]; then
+          TAR_STRIP_OPTION="--strip-components=$LEVELS2KILL"
+        fi
+
+        case $FILEEXTENSION in
+        tar.gz)
+          mkdir -p "$FOLDER" && \
+            tar -xzf $defaultDownloadFolder/$FILENAME -C "$FOLDER" $TAR_STRIP_OPTION 1>/dev/null
+          [ -z "$TAR_STRIP_OPTION" ] && GETEM_moveFilesIntoPlace "$FOLDER" $LEVELS2KILL
+          break
+          ;;
+        tar.bz2)
+          mkdir -p "$FOLDER" && \
+            tar -xjf $defaultDownloadFolder/$FILENAME -C "$FOLDER" $TAR_STRIP_OPTION 1>/dev/null
+          [ -z "$TAR_STRIP_OPTION" ] && GETEM_moveFilesIntoPlace "$FOLDER" $LEVELS2KILL
+          break
+          ;;
+        tar.lzma)
+          mkdir -p "$FOLDER" && \
+            tar --lzma -xf $defaultDownloadFolder/$FILENAME -C "$FOLDER" $TAR_STRIP_OPTION 1>/dev/null
+          [ -z "$TAR_STRIP_OPTION" ] && GETEM_moveFilesIntoPlace "$FOLDER" $LEVELS2KILL
+          break
+          ;;
+        esac
+
+        break
+        ;;
+
+      zip)
+        LEVEL2KILL_STR="*"
+        for level in $(seq 1 $LEVEL2KILL); do
+          LEVEL2KILL_STR="${LEVEL2KILL_STR}/*"
+        done
+
+        mkdir "$testFile" && \
+          unzip "$defaultDownloadFolder/$FILENAME" -d "$testFile" 1>/dev/null && \
+          mkdir -p $FOLDER > /dev/null 2>&1  && \
+          mv "$testFile"/$LEVEL2KILL_STR "$FOLDER/"
+        [ -n "$testFile" -a -d "$testFile" ] && rm -rf "$testFile"
+        break
+        ;;
+
+      exe|msi)
+        if GETEM_fn_exists GE_exe_msi_unpack; then
+          GE_exe_msi_unpack "$PWD/$defaultDownloadFolder/$FILENAME" "$PWD/$FOLDER" "$LEVELS2KILL"
+        else
+          GETEM_usage "Function 'GE_exe_msi_unpack' is missing."
+        fi
+        break
+        ;;
+
+      7z)
+
+        LEVEL2KILL_STR="*"
+        for level in $(seq 1 $LEVEL2KILL); do
+          LEVEL2KILL_STR="${LEVEL2KILL_STR}/*"
+        done
+
+        mkdir "$testFile" && \
+          7z x "$defaultDownloadFolder/$FILENAME" -o"$testFile" 1>/dev/null && \
+          mkdir -p $FOLDER > /dev/null 2>&1  && \
+          mv "$testFile"/$LEVEL2KILL_STR "$FOLDER/"
+        [ -n "$testFile" -a -d "$testFile" ] && rm -rf "$testFile"
+        break
+        ;;
+
+      *)
+        GETEM_usage "File extension '$FILEEXTENSION' is not recognized for unpacking."
+        ;;
+      esac
+    fi
+  else
+    GETEM_usage "Function 'GE_getfolder' or 'GE_levels' is/are missing."
+  fi
+}
+
+
+#
+# Remove the folder for the version $1, using the designation defined by GE_getfolder
+#
+GETEM_removeFolder()
+{
+  if GETEM_fn_exists GE_getfolder; then
+    [ "$#" -lt 1 ] && GETEM_usage "Missing VERSION for removing folder."
+    FOLDER=`GE_getfolder $1`
+    [ -n "$FOLDER" -a -d "$FOLDER" ] && rm -rf "$FOLDER"
+  else
+    GETEM_usage "Function 'GE_getfolder' is missing."
+  fi
+}
+
+# ------------------------------------------------------------ end of functions
+
+
+# automatic body of the calling script ----------------------------------------
+case $1 in
+description) GETEM_showDescription ;;
+update)      GETEM_update $2 $3 ;;
+versions)    GETEM_versions $2 $3 ;;
+getmirror)   GETEM_getmirror ;;
+listmirrors) GETEM_listmirrors ;;
+optmirrors)  GETEM_optmirrors ;;
+pickmirror)  GETEM_pickmirror $2 ;;
+geturl)      GETEM_geturl $2 $3 ;;
+unroll)      GETEM_unroll $2 ;;
+getversion)  GETEM_getversion $2 $3 ;;
+getfilename) GETEM_getfilename $2 ;;
+verifyfile)  GETEM_verifyfile $2 $3 ;;
+cache)       GETEM_cache $2 ;;
+purge)       GETEM_purge $2 ;;
+unpack)      GETEM_unpackFile $2 ;;
+remove)      GETEM_removeFolder $2 ;;
+*)           usage "Invalid option '$1'" ;;
+esac
+
+
+# ----------------------------------------------------------------- end-of-file

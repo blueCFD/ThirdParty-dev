@@ -1,0 +1,580 @@
+#---------------------------------*- sh -*-------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2014 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# File
+#     etc/tools/get-emFunctions
+#
+# Description
+#     Functions for the script get-em.
+#
+#------------------------------------------------------------------------------
+
+PATH_TO_GE_SCRIPTS="etc/tools/get-em"
+GE_VALID_APPS=""
+FAILED_DOWNLOADED_APPS=""
+
+
+#
+# save the list of valid applications into the variable GE_VALID_APPS
+#
+listValidApps()
+{
+  GE_VALID_APPS=`ls -1 $PATH_TO_GE_SCRIPTS/* | grep -ve "\." | sed 's=.*/==g'`
+}
+
+
+#
+# save the list of failed downloads
+#
+addFailedDownloadToList()
+{
+  FAILED_DOWNLOADED_APPS="$FAILED_DOWNLOADED_APPS $1"
+}
+
+
+#
+# The answer to the million dollar question: are you sure?
+# Returns the variable "THE_ANSWER" with 1 (Yes) or 0 (No).
+#
+theQuestion()
+{
+  THE_ANSWER=""
+  while [ -z "$THE_ANSWER" ]; do
+    echo "(Y)es or (N)o?"
+    read THE_ANSWER
+    case $THE_ANSWER in
+    Y | Yes | y | yes)
+      THE_ANSWER=1
+      break
+      ;;
+    N | No | n | no)
+      THE_ANSWER=0
+      break
+      ;;
+    *)
+      echo Invalid answer...
+      THE_ANSWER=""
+      ;;
+    esac
+  done
+}
+
+
+#
+# Receive maximum mirror count $1.
+# Return the mirror number in the variable $THE_ANSWER.
+#
+requestMirrorNumber()
+{
+  THE_ANSWER=""
+  while [ -z "$THE_ANSWER" ]; do
+    echo "Indicate which mirror number you choose:"
+    read THE_ANSWER
+    if [ -n "$THE_ANSWER" ] && [ $THE_ANSWER -gt 0 -a $THE_ANSWER -le $1 ]; then
+      break;
+    else
+      echo Invalid value...
+      THE_ANSWER=""
+    fi
+  done
+}
+
+
+#
+# Show error message for when there is a missing version or app name for $1
+#
+missingAppErrorMessage()
+{
+  echo "Missing application name or version - given: '$1'" >&2
+  exit 1
+}
+
+
+#
+# show the list of applications that have been selected $*
+#
+showSelectionList()
+{
+  for appver in $*; do
+    echo "   $appver"
+  done
+  echo
+}
+
+
+#
+# show the list of applications that failed the download step
+#
+displayFailedDownloads()
+{
+  if [ -n "$FAILED_DOWNLOADED_APPS" ]; then
+    echo "List of failed downloads:"
+    for app in $FAILED_DOWNLOADED_APPS; do
+      echo $app
+    done
+  fi
+}
+
+
+#
+# show the list of applications that can be downloaded and unpacked
+#
+displayValidApps()
+{
+  for app in $GE_VALID_APPS; do
+    echo `$PATH_TO_GE_SCRIPTS/$app description`
+  done
+}
+
+
+#
+# Checks if the app $1 is valid or not. After it completes, it will not allow
+# the code to continue if it's a bad app.
+#
+isValidApp()
+{
+  IS_APP_VALID=""
+  for app in $GE_VALID_APPS; do
+    if [ "$app" = "$1" ]; then
+      IS_APP_VALID="VALID"
+      break
+    fi
+  done
+
+  if [ -z "$IS_APP_VALID" ]; then
+    echo "Application '$1' is invalid" >&2
+    exit 1
+  fi
+  unset IS_APP_VALID
+}
+
+
+#
+# Get a mirror URL
+#
+getMirrorForApp()
+{
+  if ! $PATH_TO_GE_SCRIPTS/$1 getmirror; then
+    echo "No mirrors available for application '$1'." >&2
+  fi
+}
+
+
+#
+# update the list of versions available for this application that can be downloaded and unpacked
+#
+updateVersion()
+{
+  echo "Updating versions for application '$1'..."
+  $PATH_TO_GE_SCRIPTS/$1 update `getMirrorForApp $1`
+}
+
+
+#
+# update the list of versions available for all applications that can be downloaded and unpacked
+#
+updateVersions()
+{
+  for app in $GE_VALID_APPS; do
+    updateVersion $app
+  done
+}
+
+
+#
+# show the list of versions available for this application that can be downloaded and unpacked
+#
+displayVersionsForApp()
+{
+  isValidApp $1
+  $PATH_TO_GE_SCRIPTS/$1 versions `getMirrorForApp $1`
+}
+
+
+#
+# show the list of versions available for all applications that can be downloaded and unpacked
+#
+displayVersionsForAll()
+{
+  for app in $GE_VALID_APPS; do
+    displayVersionsForApp $app
+  done
+}
+
+
+#
+# unroll combo packages. Receives the application/combo $1 and the version $2
+#
+unrollAppNVer()
+{
+  [ $# -lt 2 -o "$1" = "$2" ] && missingAppErrorMessage $1
+  isValidApp $1
+  $PATH_TO_GE_SCRIPTS/$1 unroll $2 || exit 1
+}
+
+
+#
+# unroll the list of combo packages
+#
+unrollAppsAndVersions()
+{
+  for appver in $*; do
+    app=${appver%=*}
+    ver=${appver##*=}
+    unrollAppNVer $app $ver
+  done
+}
+
+
+#
+# show the list of versions already fully downloaded for the chosen application
+#
+displayCacheForApp()
+{
+  isValidApp $1
+  echo "Versions already downloaded for application '$1'..."
+  MIRRORURL=`getMirrorForApp $1`
+  VERSIONS_AVAILABLE=`$PATH_TO_GE_SCRIPTS/$1 versions $MIRRORURL | sed -e 's/'$1'=//g'`
+  for ver in $VERSIONS_AVAILABLE; do
+    ANSWER=`$PATH_TO_GE_SCRIPTS/$1 cache ${ver}`
+    [ -n "$ANSWER" ] && echo $1=$ver
+  done
+  echo #empty line
+}
+
+
+#
+# show the list of versions already fully downloaded for the all applications
+#
+displayCacheForAll()
+{
+  for app in $GE_VALID_APPS; do
+    displayCacheForApp $app
+  done
+}
+
+
+#
+# download the app $1 and respective version $2
+#
+downloadApp()
+{
+  [ $# -lt 2 -o "$1" = "$2" ] && missingAppErrorMessage $1
+  isValidApp $1
+  MIRRORURL=`getMirrorForApp $1`
+  REALVERSION=`$PATH_TO_GE_SCRIPTS/$1 getversion $MIRRORURL $2`
+  FILEURL=`$PATH_TO_GE_SCRIPTS/$1 geturl $MIRRORURL $REALVERSION`
+  FILENAME=`$PATH_TO_GE_SCRIPTS/$1 getfilename $REALVERSION`
+  ISCACHED=`$PATH_TO_GE_SCRIPTS/$1 cache $REALVERSION`
+
+  #purge the bad download
+  if [ -n "$ISCACHED" ]; then
+    if [ "$ISCACHED" = "INCOMPLETE" ]; then
+      $PATH_TO_GE_SCRIPTS/$1 purge $REALVERSION && ISCACHED=""
+    elif [ "$ISCACHED" = "EXISTS" ]; then
+      FILENAMECHECK=`$PATH_TO_GE_SCRIPTS/$1 verifyfile $REALVERSION`
+      [ -z "$FILENAMECHECK" ] && $PATH_TO_GE_SCRIPTS/$1 purge $REALVERSION && ISCACHED=""
+    fi
+  fi
+
+  if [ -z "$ISCACHED" ]; then
+    downloadFile $FILENAME $FILEURL
+    echo "Downloading $1, version $REALVERSION..."
+
+    echo "Verifying if the downloaded package $1, version $REALVERSION, is OK or not..."
+    FILENAMECHECK=`$PATH_TO_GE_SCRIPTS/$1 verifyfile $REALVERSION`
+
+    if [ -n "$FILENAMECHECK" ]; then
+      echo "The downloaded package $1, version $REALVERSION, seems to be OK."
+    else
+      echo "The downloaded package $1, version $REALVERSION, is NOT OK."
+      addFailedDownloadToList $1=$REALVERSION
+    fi
+  else
+    echo "Application $1, version $REALVERSION, has already been downloaded."
+  fi
+}
+
+
+#
+# download the list of apps and respective versions (app=version)
+#
+downloadApps()
+{
+  if [ $# -eq 0 ]; then
+    echo "There are no valid chosen applications to be removed." >&2 && exit 1
+  else
+    for appver in $*; do
+      app=${appver%=*}
+      ver=${appver##*=}
+      downloadApp $app $ver
+    done
+  fi
+}
+
+
+#
+# generate the list of commands for downloading the chosen app $1 and
+# respective version $2
+#
+generateDownloadCommandsForApp()
+{
+  [ $# -lt 2 -o "$1" = "$2" ] && missingAppErrorMessage $1
+  isValidApp $1
+  MIRRORURL=`getMirrorForApp $1`
+  REALVERSION=`$PATH_TO_GE_SCRIPTS/$1 getversion $MIRRORURL $2`
+  FILEURL=`$PATH_TO_GE_SCRIPTS/$1 geturl $MIRRORURL $REALVERSION`
+  FILENAME=`$PATH_TO_GE_SCRIPTS/$1 getfilename $REALVERSION`
+  ISCACHED=`$PATH_TO_GE_SCRIPTS/$1 cache $REALVERSION`
+
+  #purge the bad download
+  [ -n "$ISCACHED" ] && [ "$ISCACHED" = "INCOMPLETE" ] && \
+    $PATH_TO_GE_SCRIPTS/$1 purge $REALVERSION && ISCACHED=""
+
+  if [ -z "$ISCACHED" ]; then
+    echo wget \"$FILEURL\" -O $defaultDownloadFolder/$FILENAME
+  fi
+}
+
+
+#
+# generate the list of commands for downloading the chosen apps and respective
+# versions (app=version)
+#
+generateDownloadCommandsForApps()
+{
+  if [ $# -eq 0 ]; then
+    echo "There are no valid chosen applications to be removed." >&2 && exit 1
+  else
+    for appver in $*; do
+      app=${appver%=*}
+      ver=${appver##*=}
+      generateDownloadCommandsForApp $app $ver
+    done
+  fi
+}
+
+
+#
+# unpack the app $1 and respective version $2
+#
+unpackApp()
+{
+  [ $# -lt 2 -o "$1" = "$2" ] && missingAppErrorMessage $1
+  isValidApp $1
+  MIRRORURL=`getMirrorForApp $1`
+  REALVERSION=`$PATH_TO_GE_SCRIPTS/$1 getversion $MIRRORURL $2`
+  ISCACHED=`$PATH_TO_GE_SCRIPTS/$1 cache $REALVERSION`
+
+  #check if the package is already in cache
+  [ -n "$ISCACHED" ] && \
+  if [ "$ISCACHED" = "YES" ]; then
+    echo "Unpacking $1, version $REALVERSION..."
+    $PATH_TO_GE_SCRIPTS/$1 unpack $REALVERSION
+  else
+    echo "The package for $1, version $REALVERSION has not been downloaded yet."
+  fi
+}
+
+
+#
+# unpack the list of apps and respective versions (app=version)
+#
+unpackApps()
+{
+  if [ $# -eq 0 ]; then
+    echo "There are no valid chosen applications to be removed." >&2 && exit 1
+  else
+    for appver in $*; do
+      app=${appver%=*}
+      ver=${appver##*=}
+      unpackApp $app $ver
+    done
+  fi
+}
+
+
+#
+# remove the folder for the app $1 and respective version $2
+#
+removeApp()
+{
+  [ $# -lt 2 -o "$1" = "$2" ] && missingAppErrorMessage $1
+  isValidApp $1
+  MIRRORURL=`getMirrorForApp $1`
+  REALVERSION=`$PATH_TO_GE_SCRIPTS/$1 getversion $MIRRORURL $2`
+
+  echo "Removing the folder for $1, version $REALVERSION..."
+  $PATH_TO_GE_SCRIPTS/$1 remove $REALVERSION
+}
+
+
+#
+# remove the folders for the list of apps and respective versions (app=version)
+#
+removeApps()
+{
+  if [ $# -eq 0 ]; then
+    echo "There are no valid chosen applications to be removed." >&2 && exit 1
+  else
+    echo "Are you certain that you wish to remove the source folders for the following applications:"
+    showSelectionList $*
+    theQuestion
+    if [ $THE_ANSWER -eq 1 ]; then
+      for appver in $*; do
+        app=${appver%=*}
+        ver=${appver##*=}
+        removeApp $app $ver
+      done
+    fi
+  fi
+}
+
+
+#
+# purge the downloaded package for the app $1 and respective version $2
+#
+purgeApp()
+{
+  [ $# -lt 2 -o "$1" = "$2" ] && missingAppErrorMessage $1
+  isValidApp $1
+  MIRRORURL=`getMirrorForApp $1`
+  REALVERSION=`$PATH_TO_GE_SCRIPTS/$1 getversion $MIRRORURL $2`
+  ISCACHED=`$PATH_TO_GE_SCRIPTS/$1 cache $REALVERSION`
+
+  #check if the package is already in cache
+  [ -n "$ISCACHED" ] && \
+  if [ "$ISCACHED" = "YES" ]; then
+    echo "Purging $1, version $REALVERSION..."
+    $PATH_TO_GE_SCRIPTS/$1 purge $REALVERSION
+  else
+    echo "The package for $1, version $REALVERSION has already been purged."
+  fi
+}
+
+
+#
+# purge the downloaded package for the list of apps and respective versions (app=version)
+#
+purgeApps()
+{
+  if [ $# -eq 0 ]; then
+    echo "There are no valid chosen applications to be removed." >&2 && exit 1
+  else
+    echo "Are you certain that you wish to remove from cache the following applications:"
+    showSelectionList $*
+    theQuestion
+    if [ $THE_ANSWER -eq 1 ]; then
+      for appver in $*; do
+        app=${appver%=*}
+        ver=${appver##*=}
+        purgeApp $app $ver
+      done
+    fi
+  fi
+}
+
+
+#
+# show the list of mirrors for the chosen application $1
+#
+displayMirrorsForApp()
+{
+  isValidApp $1
+  if [ `$PATH_TO_GE_SCRIPTS/$1 listmirrors | grep -e "://" | wc -l` -gt 0 ]; then
+    echo "List of mirrors for application '$1':"
+    $PATH_TO_GE_SCRIPTS/$1 listmirrors | sed -e 's=^=    ='
+  fi
+}
+
+
+#
+# show the list of mirrors for all valid application
+#
+displayMirrorsForAll()
+{
+  for app in $GE_VALID_APPS; do
+    displayMirrorsForApp $app
+  done
+}
+
+
+#
+# optimize the list of mirrors for the chosen application $1
+# In other words, sort the list of mirrors in order of the closest mirror.
+#
+optimizeMirrorsForApp()
+{
+  isValidApp $1
+  if [ `$PATH_TO_GE_SCRIPTS/$1 listmirrors | wc -l` -gt 1 ]; then
+    echo "Timmings for the list of mirrors for application '$1':"
+    $PATH_TO_GE_SCRIPTS/$1 optmirrors
+  else
+    echo "This application '$1' doesn't need mirror list optimization."
+  fi
+}
+
+
+#
+# optimize the list of mirrors for the all applications
+#
+optimizeMirrorsForAll()
+{
+  for app in $GE_VALID_APPS; do
+    optimizeMirrorsForApp $app
+  done
+}
+
+
+#
+# pick from one mirror from the list of mirrors the application $1
+#
+pickMirrorsForApp()
+{
+  isValidApp $1
+  MIRROR_COUNT=`$PATH_TO_GE_SCRIPTS/$1 listmirrors | wc -l`
+  if [ $MIRROR_COUNT -gt 1 ]; then
+    echo "Pick from the list of mirrors for application '$1':"
+    $PATH_TO_GE_SCRIPTS/$1 listmirrors | grep -n -e ".*"
+    requestMirrorNumber $MIRROR_COUNT
+    $PATH_TO_GE_SCRIPTS/$1 pickmirror $THE_ANSWER
+  else
+    echo "This application '$1' only has one server link."
+  fi
+  unset MIRROR_COUNT MIRROR_POS
+}
+
+
+#
+# pick from one mirror from the list of mirrors for the all applications
+#
+pickMirrorsForAll()
+{
+  for app in $GE_VALID_APPS; do
+    pickMirrorsForApp $app
+  done
+}
+
+# ----------------------------------------------------------------- end of functions
+
+#retrieve a list of valid applications - list saved in "GE_VALID_APPS"
+listValidApps
+
+# ----------------------------------------------------------------- end-of-file

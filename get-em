@@ -1,0 +1,231 @@
+#!/bin/sh
+#------------------------------------------------------------------------------
+# License
+#     Copyright (C) 2011-2014 blueCAPE Lda
+#
+#     This file is derived from the branch "get-em" available here:
+#         https://github.com/wyldckat/ThirdParty-2.0.x/commits/get-em
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     It's licensed under the same license of the target software, namely GPL
+#     v3 or above (see <http://www.gnu.org/licenses/>).
+#
+#     The target software is OpenFOAM(R) <http://www.openfoam.org>. It's
+#     trademarked by and Copyright (C) 2011-2014 OpenFOAM Foundation
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+#     Note: this script contains some source code derived from OpenFOAM's own
+#     shell scripts.
+#
+# File
+#     get-em
+#
+# Description
+#     It's designed to assist the user on the download and unpacking of the
+#   various ThirdParty packages that may or may not be necessary for the proper
+#   operation of OpenFOAM.
+#     The option nomenclature is based on popular package managers, although
+#   this script is an over-simplified version of any package manager.
+#
+# TODO
+#   * Ability to pick package format, when available: tar.gz, tar.bz2, zip
+#
+#------------------------------------------------------------------------------
+
+Script=${0##*/}
+
+# run from third-party directory only
+cd ${0%/*} || exit 1
+wmakeCheckPwd "$WM_THIRD_PARTY_DIR" || {
+    echo "Error: Current directory is not \$WM_THIRD_PARTY_DIR"
+    echo "    The environment variables are inconsistent with the installation."
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+[ -n "$FOAM_EXT_LIBBIN" ] || {
+    echo "Error: FOAM_EXT_LIBBIN not set"
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+. etc/tools/ThirdPartyFunctions
+. etc/tools/get-emFunctions
+
+usage() {
+    if ! ping github.com -c 1 > /dev/null 2>&1; then
+      echo WARNING: No Internet connection to the outside has been detected!
+      echo Internet connection is needed for this script to work.
+      echo If no Internet connection is available, you will only be able to
+      echo use the offline features.
+    fi
+
+    exec 1>&2
+    while [ "$#" -ge 1 ]; do echo "$1"; shift; done
+    cat<<USAGE
+
+Usage
+  Must be executed from the ThirdParty folder and OpenFOAM's environment must be active. Usage:
+    ./$Script li(st)
+    ./$Script up(date) [APPLICATION]
+    ./$Script ve(rsions) [APPLICATION]
+    ./$Script ca(che) [APPLICATION]
+    ./$Script so(urce) APPLICATION1=VERSION [APPLICATION2=VERSION] [...]
+    ./$Script do(wnload) APPLICATION1=VERSION [APPLICATION2=VERSION] [...]
+    ./$Script od(ownload) APPLICATION1=VERSION [APPLICATION2=VERSION] [...]
+    ./$Script un(pack) APPLICATION1=VERSION [APPLICATION2=VERSION] [...]
+    ./$Script re(move) APPLICATION1=VERSION [APPLICATION2=VERSION] [...]
+    ./$Script pu(rge) APPLICATION1=VERSION [APPLICATION2=VERSION] [...]
+    ./$Script mi(rrors) [APPLICATION]
+    ./$Script mi(rrors)-opt(imize) [APPLICATION]
+    ./$Script mi(rrors)-pick [APPLICATION]
+
+Valid options (use only one per command)
+  list     : shows a list of the retrievable software applications.
+  update   : updates the cached lists of available versions.
+  versions : shows the list of available versions.
+  cache    : shows the list of already downloaded packages.
+  source   : download (if necessary) and unpack the desired applications and respective versions.
+  download : download (if necessary) the desired applications and respective versions.
+  odownload: generate a 'wget' based command list for downloading the applications missing from the chosen list.
+  unpack   : unpack (if available) the desired applications and respective versions.
+  remove   : remove the unpacked folders the desired applications and respective versions.
+  purge    : remove from the cache the downloaded packages for the desired applications and respective versions.
+  mirrors  : list the server mirrors available for one or all applications.
+  mi-opt   : find the closest server mirror to be used for one or all applications.
+  mi-pick  : pick another server mirror manually for one or all applications.
+
+Special application markers and versions
+  APP=default   : APP is the name of the desired application, therefore downloading the pre-defined default version.
+  APP=latest    : APP is the name of the desired application, therefore downloading the latest version available.
+
+Examples
+  Download only gcc 4.5.2:
+      ./$Script do gcc=4.5.2
+
+  Download and unpack the latest gcc:
+      ./$Script source gcc=latest
+
+USAGE
+    exit 1
+}
+
+#if no options, show how to use
+[ "$#" -eq 0 ] && usage
+
+#secure local variables
+downloadOpt=0
+unpackOpt=0
+
+# parse primary option
+case "$1" in
+h | he | help | -h | -help) usage ;;
+li | list)
+  [ "$#" -gt 1 ] && usage "Too many arguments..."
+  displayValidApps
+  ;;
+up | update)
+  [ "$#" -gt 2 ] && usage "Too many arguments..."
+  if [ "$#" -eq 2 ]; then
+    updateVersion $2
+  else
+    updateVersions
+  fi
+  ;;
+ve | versions)
+  [ "$#" -gt 2 ] && usage "Too many arguments..."
+  if [ "$#" -eq 2 ]; then
+    displayVersionsForApp $2
+  else
+    displayVersionsForAll
+  fi
+  ;;
+ca | cache)
+  [ "$#" -gt 2 ] && usage "Too many arguments..."
+  if [ "$#" -eq 2 ]; then
+    displayCacheForApp $2
+  else
+    displayCacheForAll
+  fi
+  ;;
+so | source)
+  downloadOpt=1
+  unpackOpt=1
+  ;;
+do | download)
+  downloadOpt=1
+  ;;
+un | unpack)
+  unpackOpt=1
+  ;;
+od | odownload)
+  [ "$#" -lt 2 ] && usage "Insufficient arguments..."
+  #Unroll the combo packages and reset the list of apps and respective versions
+  shift ; set -- `unrollAppsAndVersions $*`
+  generateDownloadCommandsForApps $*
+  ;;
+re | remove)
+  [ "$#" -lt 2 ] && usage "Insufficient arguments..."
+  #Unroll the combo packages and reset the list of apps and respective versions
+  shift ; set -- `unrollAppsAndVersions $*`
+  removeApps $*
+  ;;
+pu | purge)
+  [ "$#" -lt 2 ] && usage "Insufficient arguments..."
+  #Unroll the combo packages and reset the list of apps and respective versions
+  shift ; set -- `unrollAppsAndVersions $*`
+  purgeApps $*
+  ;;
+mi | mirrors)
+  [ "$#" -gt 2 ] && usage "Too many arguments..."
+  if [ "$#" -eq 2 ]; then
+    displayMirrorsForApp $2
+  else
+    displayMirrorsForAll
+  fi
+  ;;
+mi-opt | mirrors-opt | mi-optimize | mirrors-optimize)
+  [ "$#" -gt 2 ] && usage "Too many arguments..."
+  if [ "$#" -eq 2 ]; then
+    optimizeMirrorsForApp $2
+  else
+    optimizeMirrorsForAll
+  fi
+  ;;
+mi-pick | mirrors-pick)
+  [ "$#" -gt 2 ] && usage "Too many arguments..."
+  if [ "$#" -eq 2 ]; then
+    pickMirrorsForApp $2
+  else
+    pickMirrorsForAll
+  fi
+  ;;
+*)
+  usage "unknown option/argument: '$1'"
+  ;;
+esac
+
+#download and/or unpack
+if [ $downloadOpt -eq 1 -o $unpackOpt -eq 1 ]; then
+
+  [ "$#" -lt 2 ] && usage "Insufficient arguments..."
+
+  #Unroll the combo packages and reset the list of apps and respective versions
+  shift ; set -- `unrollAppsAndVersions $*`
+
+  if [ $downloadOpt -eq 1 ]; then
+    downloadApps $*
+    displayFailedDownloads
+  fi
+
+  if [ $unpackOpt -eq 1 ]; then
+    unpackApps $*
+  fi
+
+fi
+
+echo #empty line
+echo $Script tasks completed.
