@@ -121,6 +121,7 @@ OPENMPI)
             --prefix=$MPI_ARCH_PATH \
             --disable-orterun-prefix-by-default \
             --enable-shared --disable-static \
+            --enable-mpi-thread-multiple \
             --libdir=$MPI_ARCH_PATH/lib${WM_COMPILER_LIB_ARCH} \
             --enable-mpi-fortran=none \
             --disable-mpi-profile \
@@ -223,8 +224,8 @@ echo ========================================
 echo "Build Scotch decomposition library $SCOTCH_VERSION"
 echo "    $SCOTCH_ARCH_PATH"
 
-# this needs generalizing
-scotchMakefile=../../etc/wmakeFiles/scotch/Makefile.inc.i686_pc_linux2.shlib-OpenFOAM-$WM_ARCH_OPTION$WM_LABEL_OPTION
+# this needs generalizing for any compiler, since it's hard-coded to GCC
+scotchMakefile=../../etc/wmakeFiles/scotch/Makefile.inc.i686_pc_linux2.shlib-OpenFOAM
 
 if [ -f $SCOTCH_ARCH_PATH/include/scotch.h \
   -a -r $FOAM_EXT_LIBBIN/libscotch.so \
@@ -434,21 +435,8 @@ then
         set -x
         cd $METIS_VERSION  || exit 1
 
-        if [ "$WM_PRECISION_OPTION" = "DP" ]
-        then
-            FLOAT_PRECISION=64
-        elif [ "$WM_PRECISION_OPTION" = "SP" ]
-        then
-            FLOAT_PRECISION=32
-        else
-            echo " Metis pre-configure error:"
-            echo "    WM_PRECISION_OPTION is neither DP nor SP"
-            exit 1
-        fi
-
         # Change user settings automatically
         sed -i -e 's=\(#define IDXTYPEWIDTH\).*=\1 '$WM_LABEL_SIZE'=' \
-               -e 's=\(#define REALTYPEWIDTH\).*=\1 '$FLOAT_PRECISION'=' \
             include/metis.h
 
         make config shared=1 prefix=$METIS_ARCH_PATH
