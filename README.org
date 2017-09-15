@@ -1,71 +1,66 @@
 #                            -*- mode: org; -*-
 #
-#+TITLE:              OpenFOAM-5.x Third-Party packages
-#+AUTHOR:                  The OpenFOAM Foundation
-#+DATE:                       26th July 2017
-#+LINK:                     http://www.openfoam.org
+#+TITLE:          blueCFD-Core README for port of OpenFOAM 5.x
+#+AUTHOR:                     FSD blueCAPE Lda
+#+DATE:                       15th August 2017
+#+LINK:                    http://bluecfd.com/Core
 #+OPTIONS: author:nil ^:{}
-# Copyright (c) 2014-2017 OpenFOAM Foundation.
-# Modifications by blueCAPE 2017-09-14 for blueCFD-Core: http://bluecfd.com/Core
+# Copyright (c) 2013-2017 blueCAPE Lda.
 
-* Description
-  Scripts for building third-party packages.
+* About blueCFD-Core
+  blueCFD®-Core is an open source project provided by blueCAPE Lda. It
+  provides source code and high quality builds of OpenFOAM® and related open
+  source projects, as unofficial ports for up-to-date 64 bit Windows 7 to 10.
+  Additional tweaks, executables and scripts are also provided, in order to
+  maintain usability when working within Microsoft Windows Operating Systems.
+  Building for 32 bit and/or running on Windows XP should be possible
+  but it is not supported at the moment.
 
-* Dependencies:
-  + tar - with 'gz' and 'bz2' support
-  + unzip
-  + 7z - 7zip, but only for compiling for Windows.
+  OpenFOAM is free software: you can redistribute it and/or modify it under the
+  terms of the GNU General Public License as published by the Free Software
+  Foundation, either version 3 of the License, or (at your option) any later
+  version.  See the file =COPYING= in this directory or
+  [[http://www.gnu.org/licenses/]], for a description of the GNU General Public
+  License terms under which you can copy the files.
+  
+  More information about OpenFOAM is provided in the file =README.OpenFOAM.org=
 
-* Convenience script for MSYS2:
-  + get-em source scotch=default metis=default (all optional)
+* Information
+  This source code is a patched version of the original OpenFOAM source code.
+  The modifications made are tracked at the blueCFD project at Github:
+      [[http://github.com/blueCFD]]
 
-* Order of execution:
-  + makeGcc   (recommended if the system gcc is < 4.8)
-  + Allwmake  (Builds OpenMPI, Scotch etc.)
-  + makeCmake (if the system cmake version is < 3.3.0)
-  + makeParaView
-*** Optional
-    + AllwmakeLibccmio (Only required for conversion of STAR-CCM+ meshes)
-    + Allclean (Only required to save disk space)
-* Versions and locations to download the third party packages
-*** Gcc C++ Compiler
-    The minimum version of gcc required is 4.8.0
-    + gcc   http://gcc.gnu.org/releases.html
-    + gmp   http://gmplib.org/
-            ftp://ftp.gnu.org/gnu/gmp/gmp-5.1.2.tar.bz2
-    + mpfr  http://www.mpfr.org/
-            ftp://ftp.gnu.org/gnu/mpfr/mpfr-3.1.2.tar.bz2
-    + mpc   http://www.multiprecision.org/
-            http://www.multiprecision.org/mpc/download/mpc-1.0.1.tar.gz
-*** Parallel Processing
-***** Scotch
-      Scotch-6.0.3 is provided with ThirdParty-5.x or the original source pack
-      may be obtained from:
-      + Scotch/PtScotch: https://gforge.inria.fr/frs/download.php/file/34099/scotch_6.0.3.tar.gz
-***** OpenMPI
-      + OpenMPI: https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.1.tar.bz2
-*** ParaView
-    Warning: This is currently not supported in blueCFD-Core, via MSys2.
+  The modifications made for the blueCFD-Core project are based on Symscape's
+  modifications to the OpenFOAM source code, which are provided at their
+  website: [[http://www.symscape.com]]
 
-	Original instructions:
-    If the system cmake version is < 3.3.0 you will need to download and build a
-    recent version:
-    + cmake          http://www.cmake.org/files/v3.9/cmake-3.9.0.tar.gz
-    Patched versions of the ParaView source code were once provided for ParaView
-    v5.0.1.  With the current supported version of ParaView (v.5.4.0), the
-    source code
-    + ParaView-5.4.0 http://www.paraview.org/files/v5.4/ParaView-v5.4.0.tar.gz
-    is downloaded automatically and compiles without modification.  ParaView is
-    compiled by running the =makeParaView= script, i.e.
-    + ./makeParaView
-    Expect ParaView to take a long time to compile, typically several hours on a
-    desktop computer.  Following compilation, update the environment by sourcing
-    the .bashrc (or .cshrc) file or by typing
-    + wmRefresh
-*** CGAL
-    + CGAL        https://github.com/CGAL/cgal/releases/download/releases%2FCGAL-4.10/CGAL-4.10.tar.xz
-    + boost       http://sourceforge.net/projects/boost/files/boost/1.55.0/boost_1_55_0.tar.bz2/download
-*** Miscellaneous
-    + libccmio    http://portal.nersc.gov/svn/visit/trunk/third_party/libccmio-2.6.1.tar.gz
+* Disclaimers
+  blueCAPE Lda is responsible for the development of the blueCFD®-Core project:
+      [[http://bluecape.com.pt]]
 
-# --------------------------------------------------------------------------
+  blueCFD® is a registered trade mark of blueCAPE Lda:
+      [[http://bluecfd.com/trademark]]
+
+  This offering is not approved or endorsed by OpenCFD (ESI Group), the
+  producer of the OpenFOAM+ software and owner of the OPENFOAM® and OpenCFD®
+  trade marks.
+
+  blueCAPE Lda is a contributor to the OpenFOAM Foundation, but the majority of
+  the modifications present in the source code herein will not be accepted in
+  the official releases of OpenFOAM, mostly due to the maintenance overhead
+  associated to supporting closed-source operating systems.
+
+* Project page
+  [[http://bluecfd.github.io/Core/]]
+
+* Release notes
+  [[http://bluecfd.github.io/Core/ReleaseNotes]]
+
+* Documentation
+  [[http://bluecfd.github.io/Core/UserGuide]]
+
+* Support and development contracts related to blueCFD-Core
+  [[http://bluecfd.com/contact]]
+
+* Reporting Bugs
+  [[https://github.com/blueCFD/Core/issues]]
