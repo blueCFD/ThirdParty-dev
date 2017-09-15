@@ -49,13 +49,14 @@ fi
 
 if [ -z "$SCOTCH_VERSION" ]; then
     # get SCOTCH_VERSION, SCOTCH_ARCH_PATH
-    if settings=`$WM_PROJECT_DIR/bin/foamEtcFile config/scotch.sh`
+    if settings=$($WM_PROJECT_DIR/bin/foamEtcFile config.sh/scotch)
     then
         . $settings
     else
         echo
         echo "Error: no config/scotch.sh settings"
         echo
+        exit 1
     fi
 fi
 
