@@ -84,6 +84,16 @@ case $WM_MPLIB in
     INSTPACK_SDK_FILE="msmpisdk.msi"
     ;;
 
+  MSMPI81)
+    #set up variables
+    INSTPACK_URL="https://download.microsoft.com/download/D/B/B/DBB64BA1-7B51-43DB-8BF1-D1FB45EACF7A/"
+    INSTPACK_X86="MSMpiSetup.exe"
+    INSTPACK_X86_64=$INSTPACK_X86
+    
+    ## Also need SDK installer...
+    INSTPACK_SDK_FILE="msmpisdk.msi"
+    ;;
+
   *)
     echo "Error: Incompatible MPI toolbox chosen."
     exit 1
@@ -277,7 +287,7 @@ unpack_files()
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
     ;;
 
-    MSMPI71)
+    MSMPI71|MSMPI81)
 
       relativePath=${MPI_ARCH_PATH#$WM_THIRD_PARTY_DIR/}
       chmod +x download//${WM_MPLIB}_${INSTPACK_X86}
