@@ -1,7 +1,7 @@
 #!/bin/bash
 #------------------------------------------------------------------------------
 # License
-#     Copyright (C) 2011-2016 blueCAPE Lda
+#     Copyright (C) 2011-2017 blueCAPE Lda
 #
 #     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
 #     For more information about these patches, visit:
@@ -40,6 +40,9 @@
 #
 #      * Microsoft MPI 7.1 MS-MPI Redistributable Package:
 #        https://www.microsoft.com/en-us/download/details.aspx?id=52981
+#
+#      * Microsoft MPI 8.1 MS-MPI Redistributable Package:
+#        https://www.microsoft.com/en-us/download/details.aspx?id=55494
 #
 #   This is designed to be installed directly on Windows, so that it's ready
 #   to be used after this script is finished.
