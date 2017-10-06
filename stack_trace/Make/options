@@ -1,0 +1,9 @@
+
+/*neutralize this variable...*/
+PROJECT_LIBS =
+
+EXE_INC = 
+
+LIB_LIBS = \
+    -limagehlp \
+    -ldbghelp
