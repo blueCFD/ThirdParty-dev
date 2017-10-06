@@ -77,6 +77,13 @@ echo Start ThirdParty Allwmake
 echo ========================================
 echo
 
+# Build 3rd-party software that is only relevant to MinGW builds
+if isMinGW; then
+
+  ./AllwmakeMinGWStackTrace
+
+fi
+
 
 echo ========================================
 echo Build MPI libraries if required
