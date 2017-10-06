@@ -22,8 +22,6 @@
 #include <dbghelp.h>
 #include <iosfwd>
 
-struct _EXCEPTION_POINTERS;
-
 // A stacktrace can be helpful in debugging. For example, you can include a
 // stacktrace member in a object (probably around #ifndef NDEBUG) so that you
 // can later see where the given object was created from.
