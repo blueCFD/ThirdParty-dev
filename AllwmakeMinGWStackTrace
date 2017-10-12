@@ -68,7 +68,7 @@ if [ -n "$CV2PDB_PATH" ]; then
         cp -f download/cv2pdb.exe $CV2PDB_PATH/cv2pdb.exe && \
         cp -f download/cv2pdb_README $CV2PDB_PATH/README && \
         cp -f download/cv2pdb_LICENSE $CV2PDB_PATH/LICENSE && \
-        chmod +x $CV2PDB_PATH/cv2pdb.exe \
+        chmod +x $CV2PDB_PATH/cv2pdb.exe && \
         echo "Have gotten cv2pdb with success."
     else
         echo "Already have cv2pdb ready to be used."
