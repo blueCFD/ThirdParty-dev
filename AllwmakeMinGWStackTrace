@@ -62,7 +62,7 @@ if [ -n "$CV2PDB_PATH" ]; then
         downloadFile cv2pdb.exe \
         "https://ci.appveyor.com/api/projects/rainers/visuald/artifacts/cv2pdb.exe?job=Environment%3A%20os%3DVisual%20Studio%202013%2C%20VS%3D12%2C%20APPVEYOR_BUILD_WORKER_IMAGE%3DVisual%20Studio%202015"
 
-        downloadFile cv2pdb_README https://raw.githubusercontent.com/rainers/cv2pdb/master/README
+        downloadFile cv2pdb_README https://raw.githubusercontent.com/rainers/cv2pdb/master/README.MD
         downloadFile cv2pdb_LICENSE https://raw.githubusercontent.com/rainers/cv2pdb/master/LICENSE
 
         cp -f download/cv2pdb.exe $CV2PDB_PATH/cv2pdb.exe && \
