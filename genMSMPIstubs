@@ -44,6 +44,9 @@
 #      * Microsoft MPI 8.1 MS-MPI Redistributable Package:
 #        https://www.microsoft.com/en-us/download/details.aspx?id=55494
 #
+#      * Microsoft MPI 10.1.2 MS-MPI Redistributable Package:
+#        https://www.microsoft.com/en-us/download/details.aspx?id=100593
+#
 #   This is designed to be installed directly on Windows, so that it's ready
 #   to be used after this script is finished.
 #
@@ -53,6 +56,12 @@ if ! isMinGW; then
   echo "Error: this script is meant to be used for MinGW compilers only!"
   exit 1
 fi
+
+COPY_LIB_TO_A=""
+if [ $WM_ARCH_OPTION -eq 32 ]; then
+  COPY_LIB_TO_A="yes"
+fi
+
 
 #check the MSMPI version
 case $WM_MPLIB in
@@ -97,6 +106,18 @@ case $WM_MPLIB in
     INSTPACK_SDK_FILE="msmpisdk.msi"
     ;;
 
+  MSMPI101)
+    #set up variables
+    INSTPACK_URL="https://download.microsoft.com/download/a/5/2/a5207ca5-1203-491a-8fb8-906fd68ae623/"
+    INSTPACK_X86="msmpisetup.exe"
+    INSTPACK_X86_64=$INSTPACK_X86
+    
+    ## Also need SDK installer...
+    INSTPACK_SDK_FILE="msmpisdk.msi"
+
+    COPY_LIB_TO_A="yes"
+    ;;
+
   *)
     echo "Error: Incompatible MPI toolbox chosen."
     exit 1
@@ -105,10 +126,8 @@ esac
 
 if [ $WM_ARCH_OPTION -eq 64 ]; then
   INSTPACK_FILE=$INSTPACK_X86_64
-  DLLVERNUM="64"
 else
   INSTPACK_FILE=$INSTPACK_X86
-  DLLVERNUM=""
 fi
 
 FINAL_INSTPACK_FILE=${WM_MPLIB}_${INSTPACK_FILE}
@@ -290,7 +309,7 @@ unpack_files()
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
     ;;
 
-    MSMPI71|MSMPI81)
+    MSMPI71|MSMPI81|MSMPI101)
 
       relativePath=${MPI_ARCH_PATH#$WM_THIRD_PARTY_DIR/}
       chmod +x download//${WM_MPLIB}_${INSTPACK_X86}
@@ -365,10 +384,17 @@ unpack_files()
 function create_gcccompatible_library
 {
   echo -e "\033[1m creating libmpi.a \033[0m"
-  if [ -n "${DLLVERNUM}" ]; then
+  if [ -z "${COPY_LIB_TO_A}" ]; then
+
     cd $BUILDDIR/lib
     gendef - ../bin/msmpi.dll > libmpi.def
     dlltool -d libmpi.def -l libmpi.a -D msmpi.dll
+
+  else
+
+    # library interface is already compatible with GCC+MinGW
+    cp "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+
   fi
 }
 
@@ -382,7 +408,7 @@ function patch_mpi_includes
   cat mpi.h | sed -e ':a;N;$!ba;s/\r\n/\n/g' > mpi.h_tmp
   mv -f mpi.h_tmp mpi.h
 
-  if [ "$WM_ARCH_OPTION" = "64" ]; then
+  if [ "$WM_ARCH_OPTION" = "64" -a -z "${COPY_LIB_TO_A}" ]; then
     patch -p0 --binary < $WM_THIRD_PARTY_DIR/etc/patches/patch_msmpi_mpi_h
   fi
 
@@ -418,7 +444,7 @@ echo '--- mpi.h_orig  2011-01-18 15:11:38.284485101 +0000
     patch -p0 --binary < $WM_THIRD_PARTY_DIR/etc/patches/patch_msmpi2012_mpi_h
   fi
 
-  if [ -n "${DLLVERNUM}" ]; then
+  if [ -z "${COPY_LIB_TO_A}" ]; then
     cat mpi.h | sed -e 's=\#define MPIAPI __stdcall=\#define MPIAPI=' > mpi.h_tmp
     mv -f mpi.h_tmp mpi.h
   fi
