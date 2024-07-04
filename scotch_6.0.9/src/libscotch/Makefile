@@ -3095,7 +3095,7 @@ ptscotchf.h			:	ptdummysizes$(EXE)			\
 					library_pt_f.h
 					./ptdummysizes$(EXE) "-s$(SCOTCH_NAME_SUFFIX)" library_pt_f.h ptscotchf.h
 
-libscotch$(LIB)			:	$(LIBSCOTCHDEPS)
+libscotch$(LIB)			:	$(LIBSCOTCHDEPS) libscotcherr$(LIB)
 					$(AR) $(ARFLAGS) $(@) $(?) $(ARSFLAGS)
 					-$(RANLIB) $(@)
 
