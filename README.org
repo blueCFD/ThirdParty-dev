@@ -1,19 +1,19 @@
 #                            -*- mode: org; -*-
 #
-#+TITLE:          blueCFD-Core README for port of OpenFOAM 5.x
+#+TITLE:          blueCFD-Core README for port of OpenFOAM dev
 #+AUTHOR:                     FSD blueCAPE Lda
-#+DATE:                       15th August 2017
+#+DATE:                        5th July 2024
 #+LINK:                    http://bluecfd.com/Core
 #+OPTIONS: author:nil ^:{}
-# Copyright (c) 2013-2017 blueCAPE Lda.
+# Copyright (c) 2013-2024 blueCAPE Lda.
 
 * About blueCFD-Core
   blueCFD®-Core is an open source project provided by blueCAPE Lda. It
   provides source code and high quality builds of OpenFOAM® and related open
-  source projects, as unofficial ports for up-to-date 64 bit Windows 7 to 10.
+  source projects, as unofficial ports for up-to-date 64 bit Windows 10 and 11.
   Additional tweaks, executables and scripts are also provided, in order to
   maintain usability when working within Microsoft Windows Operating Systems.
-  Building for 32 bit and/or running on Windows XP should be possible
+  Building for 32 bit and/or running on Windows XP, 7 to 8.1 should be possible
   but it is not supported at the moment.
 
   OpenFOAM is free software: you can redistribute it and/or modify it under the
@@ -35,8 +35,8 @@
   website: [[http://www.symscape.com]]
 
 * Disclaimers
-  blueCAPE Lda is responsible for the development of the blueCFD®-Core project:
-      [[http://bluecape.com.pt]]
+  FS Dynamics Portugal is responsible for the development of the blueCFD®-Core project:
+      [[http://bluecape.com.pt]] [[http://fsdynamics.pt]]
 
   blueCFD® is a registered trade mark of blueCAPE Lda:
       [[http://bluecfd.com/trademark]]
