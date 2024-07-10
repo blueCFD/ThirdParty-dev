@@ -9,6 +9,8 @@
 # 2014-02-20 blueCAPE Lda: Modifications for blueCFD-Core 2.3
 # 2016-03-14 blueCAPE Lda: Modifications for blueCFD-Core 2.3-2
 # 2016-07-22 blueCAPE Lda: Modifications for blueCFD-Core 2016-1
+# 2016-202X FS Dynamics Portugal: Subsequent changes are tracked at:
+#       https://github.com/blueCFD/OpenFOAM-dev
 #------------------------------------------------------------------------------
 # License
 #     This file is a derivative work of OpenFOAM.
@@ -238,14 +240,6 @@ checkSystemLibrary()
 
 # Scotch
 
-#either build the MinGW version or the standard version
-if isMinGW; then
-
-  ./AllwmakeMinGWScotch
-
-else
-
-
 # Scotch Makefile. Currently this is GCC specific.
 scotchMakefile=../../etc/wmakeFiles/scotch/Makefile.inc.i686_pc_linux2.shlib-OpenFOAM
 
@@ -321,6 +315,19 @@ OpenFOAM | ThirdParty)
         echo "    WARNING: required include file 'scotch.h' not found!"
     }
     ;;
+
+MSYS2)
+    echo "The system installation of Scotch decomposition will be used"
+    . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/scotch)
+
+    checkSystemLibrary scotch scotch Scotch \
+        "$SCOTCH_ARCH_PATH/lib" "$SCOTCH_ARCH_PATH/include"
+    ;;
+
+blueCFDCore)
+    ./AllwmakeMinGWScotch
+    ;;
+
 esac
 echo
 
@@ -403,11 +410,23 @@ then
             echo "    WARNING: required include file 'ptscotch.h' not found!"
         }
         ;;
+
+    MSYS2)
+        echo "The system installation of PT-Scotch decomposition will be used"
+        . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/scotch)
+
+        checkSystemLibrary ptscotch ptscotch PT-Scotch \
+            "$SCOTCH_ARCH_PATH/lib" "$SCOTCH_ARCH_PATH/include"
+        ;;
+
+    blueCFDCore)
+        #Skip, already done above
+        #./AllwmakeMinGWScotch
+        ;;
+
     esac
 fi
 echo
-
-fi #end if isMinGW
 
 #------------------------------------------------------------------------------
 
@@ -424,12 +443,53 @@ system)
         "$METIS_LIB_DIR" "$METIS_INCLUDE_DIR"
     ;;
 OpenFOAM | ThirdParty)
-  if isMinGW; then
-  (
+    . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/metis)
+    if [ -f $METIS_ARCH_PATH/include/metis.h \
+      -a -r $FOAM_EXT_LIBBIN/libmetis.so ]
+    then
+        echo "ThirdParty installation of METIS decomposition found"
+        echo "    metis header in $METIS_ARCH_PATH/include"
+        echo "    metis libs   in $FOAM_EXT_LIBBIN"
+    else
+        if [ -d "metis-$METIS_VERSION" ]
+        then
+        (
+            echo "Building a ThirdParty installation of METIS decomposition"
+
+            set -x
+            cd metis-$METIS_VERSION  || exit 1
+
+            # Change user settings automatically
+            sed -i -e 's=\(#define IDXTYPEWIDTH\).*=\1 '$WM_LABEL_SIZE'=' \
+                include/metis.h
+
+            make config shared=1 prefix=$METIS_ARCH_PATH
+            make -j $WM_NCOMPPROCS install
+            cp $METIS_ARCH_PATH/lib/libmetis.so $FOAM_EXT_LIBBIN
+        )
+        else
+            echo -n "    Error: ThirdPaty sources for METIS "
+            echo "(metis-$METIS_VERSION) were not found"
+            exit 1
+        fi
+    fi
+    ;;
+
+MSYS2)
+    echo "The system installation of METIS decomposition will be used"
+    . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/metis)
+
+    checkSystemLibrary metis metis METIS \
+        "$METIS_ARCH_PATH/lib" "$METIS_ARCH_PATH/include"
+    ;;
+
+blueCFDCore)
+    . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/metis)
 
     if [ -f $METIS_ARCH_PATH/include/metis.h \
       -a -r $FOAM_EXT_LIBBIN/libmetis.dll ]
     then
+        echo "ThirdParty installation of METIS decomposition found"
         echo "    metis header in $METIS_ARCH_PATH/include"
         echo "    metis libs   in $FOAM_EXT_LIBBIN"
         echo
@@ -488,41 +548,7 @@ OpenFOAM | ThirdParty)
 
         set +x
     fi
-  )
-  else
 
-    . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/metis)
-    if [ -f $METIS_ARCH_PATH/include/metis.h \
-      -a -r $FOAM_EXT_LIBBIN/libmetis.so ]
-    then
-        echo "ThirdParty installation of METIS decomposition found"
-        echo "    metis header in $METIS_ARCH_PATH/include"
-        echo "    metis libs   in $FOAM_EXT_LIBBIN"
-    else
-        if [ -d "metis-$METIS_VERSION" ]
-        then
-        (
-            echo "Building a ThirdParty installation of METIS decomposition"
-
-            set -x
-            cd metis-$METIS_VERSION  || exit 1
-
-            # Change user settings automatically
-            sed -i -e 's=\(#define IDXTYPEWIDTH\).*=\1 '$WM_LABEL_SIZE'=' \
-                include/metis.h
-
-            make config shared=1 prefix=$METIS_ARCH_PATH
-            make -j $WM_NCOMPPROCS install
-            cp $METIS_ARCH_PATH/lib/libmetis.so $FOAM_EXT_LIBBIN
-        )
-        else
-            echo -n "    Error: ThirdPaty sources for METIS "
-            echo "(metis-$METIS_VERSION) were not found"
-            exit 1
-        fi
-
-    fi
-  fi
     ;;
 esac
 echo
@@ -573,6 +599,19 @@ OpenFOAM | ThirdParty)
         fi
     fi
     ;;
+
+MSYS2)
+    echo "The system installation of ParMETIS decomposition will be used"
+    . $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/parMetis)
+
+    checkSystemLibrary parmetis parmetis ParMETIS \
+        "$PARMETIS_ARCH_PATH/lib" "$PARMETIS_ARCH_PATH/include"
+    ;;
+
+blueCFDCore)
+    echo "WARNING: Building ParMETIS not currently implemented with blueCFD-Core."
+    ;;
+
 esac
 echo
 
