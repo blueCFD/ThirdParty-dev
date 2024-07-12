@@ -62,6 +62,7 @@ if [ $WM_ARCH_OPTION -eq 32 ]; then
   COPY_LIB_TO_A="yes"
 fi
 
+COPY_LIB_TO_A_ALREADY_DONE=
 
 #check the MSMPI version
 case $WM_MPLIB in
@@ -116,6 +117,7 @@ case $WM_MPLIB in
     INSTPACK_SDK_FILE="msmpisdk.msi"
 
     COPY_LIB_TO_A="yes"
+    COPY_LIB_TO_A_ALREADY_DONE="yes"
     ;;
 
   *)
@@ -309,10 +311,10 @@ unpack_files()
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
     ;;
 
-    MSMPI71|MSMPI81|MSMPI101)
+    MSMPI71|MSMPI81)
 
       relativePath=${MPI_ARCH_PATH#$WM_THIRD_PARTY_DIR/}
-      chmod +x download//${WM_MPLIB}_${INSTPACK_X86}
+      chmod +x download/${WM_MPLIB}_${INSTPACK_X86}
       
       MSI_INSTALLER_NAME=${WM_MPLIB}_${INSTPACK_X86}_${WM_ARCH_OPTION}.msi
 
@@ -375,6 +377,34 @@ unpack_files()
 
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
     ;;
+    
+    MSMPI101)
+
+      7z x download/${FINAL_INSTPACK_SDK_FILE} -o$MPI_ARCH_PATH
+      7z x download/${FINAL_INSTPACK_FILE} -o$MPI_ARCH_PATH
+
+      mv "${MPI_ARCH_PATH}"/*.exe "${MPI_ARCH_PATH}/bin/"
+      mv "${MPI_ARCH_PATH}"/*.dll "${MPI_ARCH_PATH}/bin/"
+
+      mv "${MPI_ARCH_PATH}"/*.lib "${MPI_ARCH_PATH}/lib/"
+      mv "${MPI_ARCH_PATH}"/*.h "${MPI_ARCH_PATH}/include/"
+      mv "${MPI_ARCH_PATH}"/*.f90 "${MPI_ARCH_PATH}/include/"
+
+      cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
+
+      if [ $WM_ARCH_OPTION = 32 ]; then
+
+        # The 32-bit version library interface is already compatible with GCC+MinGW
+        cp -v "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+
+      else
+
+        # Is the 64-bit lib file compatible?
+        cp -v "${MPI_ARCH_PATH}/lib/msmpi64.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+
+      fi
+
+    ;;
 
   esac
 
@@ -390,10 +420,10 @@ function create_gcccompatible_library
     gendef - ../bin/msmpi.dll > libmpi.def
     dlltool -d libmpi.def -l libmpi.a -D msmpi.dll
 
-  else
+  elif [ -z "${COPY_LIB_TO_A_ALREADY_DONE}" ]; then
 
     # library interface is already compatible with GCC+MinGW
-    cp "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+    cp -v "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
 
   fi
 }
@@ -461,7 +491,6 @@ function cleanup
 #script start ------------------------------------------------------
 
 BUILDDIR="$MPI_ARCH_PATH"
-SRCDIR="$MPI_HOME/source"
 
 if [ $# -eq 1 -a "$1" = "clean" ]; then
 
