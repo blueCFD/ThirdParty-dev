@@ -217,13 +217,16 @@ checkSystemLibrary()
     reportName=$3
 
     if ! \
-        $CXX $LDFLAGS -shared --output=/dev/null ${4:+"-L$4"} -l$libraryName \
+        $CXX $LDFLAGS -shared --output=/tmp/$$ ${4:+"-L$4"} -l$libraryName \
         > /dev/null 2>&1
     then
+        rm /tmp/$$
         echo -n "    Error: A system installation of the $reportName library "
         echo "(lib$libraryName.so) was not found"
         exit 1
     fi
+
+    rm /tmp/$$
 
     if ! echo \#include \"$includeName.h\" | \
         $CXX $CXXFLAGS ${5:+"-I$5"} -I"$MPI_ARCH_PATH"/include -xc++ -E - \
