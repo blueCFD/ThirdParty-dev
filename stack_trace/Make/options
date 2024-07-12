@@ -1,5 +1,5 @@
 
-/*neutralize this variable...*/
+# neutralize this variable...
 PROJECT_LIBS =
 
 EXE_INC = 
