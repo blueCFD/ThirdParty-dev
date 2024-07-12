@@ -57,18 +57,16 @@ if [ -n "$CV2PDB_PATH" ]; then
 
     [ ! -e "$CV2PDB_PATH" ] && mkdir $CV2PDB_PATH
 
-    if [ ! -e "$CV2PDB_PATH/cv2pdb.exe" ]
+    if [ ! -e "$CV2PDB_PATH/cv2pdb64.exe" ]
     then
-        downloadFile cv2pdb.exe \
-        "https://ci.appveyor.com/api/projects/rainers/visuald/artifacts/cv2pdb.exe?job=Environment%3A%20os%3DVisual%20Studio%202013%2C%20VS%3D12%2C%20APPVEYOR_BUILD_WORKER_IMAGE%3DVisual%20Studio%202015"
+        CV2PDB_VERSION=0.52
+    
+        downloadFile cv2pdb-${CV2PDB_VERSION}.zip \
+        "https://github.com/rainers/cv2pdb/releases/download/v${CV2PDB_VERSION}/cv2pdb-${CV2PDB_VERSION}.zip"
 
-        downloadFile cv2pdb_README https://raw.githubusercontent.com/rainers/cv2pdb/master/README.MD
-        downloadFile cv2pdb_LICENSE https://raw.githubusercontent.com/rainers/cv2pdb/master/LICENSE
-
-        cp -f download/cv2pdb.exe $CV2PDB_PATH/cv2pdb.exe && \
-        cp -f download/cv2pdb_README $CV2PDB_PATH/README && \
-        cp -f download/cv2pdb_LICENSE $CV2PDB_PATH/LICENSE && \
-        chmod +x $CV2PDB_PATH/cv2pdb.exe && \
+        unzip download/cv2pdb-${CV2PDB_VERSION}.zip -d $CV2PDB_PATH/ && \
+        chmod +x $CV2PDB_PATH/cv2pdb*.exe && \
+        mv $CV2PDB_PATH/cv2pdb.exe $CV2PDB_PATH/cv2pdb32.exe && \
         echo "Have gotten cv2pdb with success."
     else
         echo "Already have cv2pdb ready to be used."
