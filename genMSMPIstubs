@@ -311,9 +311,10 @@ unpack_files()
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
     ;;
 
-    MSMPI71|MSMPI81)
+    MSMPI71|MSMPI81|MSMPI101)
 
       relativePath=${MPI_ARCH_PATH#$WM_THIRD_PARTY_DIR/}
+      relativePathLog=${relativePath}/unpack.log
       chmod +x download/${WM_MPLIB}_${INSTPACK_X86}
       
       MSI_INSTALLER_NAME=${WM_MPLIB}_${INSTPACK_X86}_${WM_ARCH_OPTION}.msi
@@ -321,7 +322,7 @@ unpack_files()
       # Override "run as admin" option. Source: http://superuser.com/a/450503
       export __COMPAT_LAYER=RUNASINVOKER
 
-      cmd /c "$(echo "download\\${WM_MPLIB}_${INSTPACK_X86} -unattend -nodepends -full -installroot \"%CD%\\${relativePath//\//\\}\"")" &
+      cmd //c "$(echo "download\\${WM_MPLIB}_${INSTPACK_X86} -unattend -nodepends -full -installroot %CD%\\${relativePath//\//\\} -log %CD%\\${relativePathLog//\//\\} ")" &
 
       while true
       do
@@ -342,9 +343,9 @@ unpack_files()
       done
 
       echo "Currently unpacking what we want..."
-      cmd /c "$(echo "msiexec /a download\\${MSI_INSTALLER_NAME} /qb TARGETDIR=\"%CD%\\${relativePath//\//\\}\"")"
+      cmd //c "$(echo "msiexec /a download\\${MSI_INSTALLER_NAME} /qb TARGETDIR=%CD%\\${relativePath//\//\\}")"
 
-      cmd /c "$(echo "msiexec /a download\\${FINAL_INSTPACK_SDK_FILE} /qb TARGETDIR=\"%CD%\\${relativePath//\//\\}\"")"
+      cmd //c "$(echo "msiexec /a download\\${FINAL_INSTPACK_SDK_FILE} /qb TARGETDIR=%CD%\\${relativePath//\//\\}")"
 
       echo "Unpacking complete."
 
@@ -373,36 +374,14 @@ unpack_files()
         cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/Lib/x64"/*.* "${MPI_ARCH_PATH}/lib/"
         cp "${MPI_ARCH_PATH}/PFiles/Microsoft SDKs/MPI/License"/* "${MPI_ARCH_PATH}/"
 
+        if [ "${WM_MPLIB}" = "MSMPI101" ]
+        then
+            cp -v "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
+        fi
+
       fi
 
       cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
-    ;;
-    
-    MSMPI101)
-
-      7z x download/${FINAL_INSTPACK_SDK_FILE} -o$MPI_ARCH_PATH
-      7z x download/${FINAL_INSTPACK_FILE} -o$MPI_ARCH_PATH
-
-      mv "${MPI_ARCH_PATH}"/*.exe "${MPI_ARCH_PATH}/bin/"
-      mv "${MPI_ARCH_PATH}"/*.dll "${MPI_ARCH_PATH}/bin/"
-
-      mv "${MPI_ARCH_PATH}"/*.lib "${MPI_ARCH_PATH}/lib/"
-      mv "${MPI_ARCH_PATH}"/*.h "${MPI_ARCH_PATH}/include/"
-      mv "${MPI_ARCH_PATH}"/*.f90 "${MPI_ARCH_PATH}/include/"
-
-      cp "${MPI_ARCH_PATH}/bin/mpiexec.exe" "${MPI_ARCH_PATH}/bin/mpirun.exe"
-
-      if [ $WM_ARCH_OPTION = 32 ]; then
-
-        # The 32-bit version library interface is already compatible with GCC+MinGW
-        cp -v "${MPI_ARCH_PATH}/lib/msmpi.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
-
-      else
-
-        # Is the 64-bit lib file compatible?
-        cp -v "${MPI_ARCH_PATH}/lib/msmpi64.lib" "${MPI_ARCH_PATH}/lib/libmpi.a"
-
-      fi
 
     ;;
 
