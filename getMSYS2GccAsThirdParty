@@ -1,0 +1,102 @@
+#!/bin/bash
+#------------------------------------------------------------------------------
+# License
+#     Copyright (C) 2024 FS Dynamics Portugal
+#
+#     This file is part of blueCAPE's unofficial mingw patches for OpenFOAM.
+#     For more information about these patches, visit:
+#         http://bluecfd.com/Core
+#
+#     This file is a derivative work of OpenFOAM.
+#
+#     OpenFOAM is free software: you can redistribute it and/or modify it
+#     under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     (at your option) any later version.
+#
+#     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+#     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+#     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+#     for more details.
+#
+#     You should have received a copy of the GNU General Public License
+#     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Script
+#     getMSYS2GccAsThirdParty
+#
+# Description
+#     This script downloads and deploys a specific version of GCC and Binutils
+#   from MSYS2, deploying it as a local third-party installation, not as part
+#   of MSYS2 installation. This way it is possible to use an older version of
+#   GCC, which was needed for building OpenFOAM 12 and dev in August 2024.
+#
+#   This is designed to be installed directly on Windows, so that it's ready
+#   to be used after this script is finished.
+#
+#------------------------------------------------------------------------------
+
+if ! isMinGW || ! onWin
+then
+  echo "Error: this script is meant to be used for MinGW compilers only and on Windows!"
+  exit 1
+fi
+
+
+# get default GCC, mpfr, gmp and mpc versions
+. $WM_PROJECT_DIR/etc/config.sh/functions
+_foamSource $($WM_PROJECT_DIR/bin/foamEtcFile config.sh/compiler)
+
+# run from third-party directory only
+cd ${0%/*} || exit 1
+wmakeCheckPwd "$WM_THIRD_PARTY_DIR" || {
+    echo "Error: Current directory is not \$WM_THIRD_PARTY_DIR"
+    echo "    The environment variables are inconsistent with the installation."
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+. etc/tools/ThirdPartyFunctions
+. etc/tools/makeExtraThirdPartyFunctions
+
+
+MSYS2_REPO="https://repo.msys2.org/mingw/mingw64/"
+PACKAGE_PREFIX="mingw-w64-x86_64-"
+PACKAGE_SUFFIX="-any.pkg.tar.zst"
+
+# From makeGcc
+installBASE=$WM_THIRD_PARTY_DIR/platforms/$WM_ARCH$WM_COMPILER_ARCH
+GCC_ARCH_PATH=$installBASE/$gcc_version
+
+if [ ! -d "${GCC_ARCH_PATH}" ]
+then
+    mkdir -p "${GCC_ARCH_PATH}"
+fi
+
+#end of initializations -------------------------------------------
+
+function downloadFromMSYS2Repo()
+{
+    downloadFile ${PACKAGE_PREFIX}${1}${PACKAGE_SUFFIX} \
+        ${MSYS2_REPO}${PACKAGE_PREFIX}${1}${PACKAGE_SUFFIX}
+}
+
+
+#script start ------------------------------------------------------
+
+PACKAGES="binutils-2.39-3"
+
+for package in gcc gcc-libs gcc-fortran gcc-libgfortran
+do
+    PACKAGES="${PACKAGES} ${package}-12.2.0-11"
+done
+
+for package in ${PACKAGES}
+do
+    echo "Handling package '${package}'"
+    downloadFromMSYS2Repo $package
+
+    tar -xf download/${PACKAGE_PREFIX}${package}${PACKAGE_SUFFIX} \
+        -C "${GCC_ARCH_PATH}" --transform="s/mingw64\///"
+done
+
+echo "Complete"
