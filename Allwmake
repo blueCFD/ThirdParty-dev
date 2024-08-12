@@ -697,7 +697,7 @@ blueCFDCore)
                 --disable-zoltan-cppdriver \
                 --with-ccflags="$CFLAGS -DWIN${WM_ARCH_OPTION}" \
                 --with-cxxflags="$CXXFLAGS -DWIN${WM_ARCH_OPTION}"
-            make everything
+            make -j $WM_NCOMPPROCS everything
             make install
         )
         else
