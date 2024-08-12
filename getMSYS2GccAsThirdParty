@@ -73,13 +73,6 @@ then
     mkdir -p "${GCC_ARCH_PATH}"
 fi
 
-if [ -z "$MSYS2_GCC_PATCH" -o -z "$MSYS2_BINUTILS_VERSION" ]
-then
-    echo "Error: \$MSYS2_GCC_PATCH and/or \$MSYS2_BINUTILS_VERSION not set, "
-    echo "    therefore this is likely not properly configured."
-    exit 1
-fi
-
 #end of initializations -------------------------------------------
 
 function downloadFromMSYS2Repo()
@@ -111,7 +104,9 @@ for package in \
     headers-git-10.0.0.r258.g530c58e17-1 \
     winpthreads-git-10.0.0.r258.g530c58e17-1 \
     libwinpthread-git-10.0.0.r258.g530c58e17-1 \
-    windows-default-manifest-6.4-4
+    windows-default-manifest-6.4-4 \
+    libsystre-1.0.1-5 \
+    libtre-git-r177.07e66d0-2
 do
     PACKAGES="${PACKAGES} ${package}"
 done
