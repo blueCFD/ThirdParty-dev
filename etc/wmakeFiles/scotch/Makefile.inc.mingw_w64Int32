@@ -1,8 +1,11 @@
 .SUFFIXES: .dll .a .def
 
+COMPILER_TYPE   = $(shell echo $(WM_COMPILER) | tr -d [:digit:])
 GENERAL_RULES = $(WM_DIR)/rules/General
+DEFAULT_RULES = $(WM_DIR)/rules/$(WM_ARCH)$(COMPILER_TYPE)
 RULES         = $(WM_DIR)/rules/$(WM_ARCH)$(WM_COMPILER)
 sinclude $(GENERAL_RULES)/mplib$(WM_MPLIB)
+sinclude $(DEFAULT_RULES)/mplib$(WM_MPLIB)
 sinclude $(RULES)/mplib$(WM_MPLIB)
 
 EXE  = .exe
