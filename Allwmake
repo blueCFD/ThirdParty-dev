@@ -190,7 +190,7 @@ fi # MPI MinGW or Linux
 
 mplibVariable()
 {
-    make \
+    make --no-print-directory \
     "GENERAL_RULES=\$(WM_DIR)/rules/General" \
     --file="$WM_DIR/rules/General/mplibType" \
     --eval="print-variable:
